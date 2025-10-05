@@ -33,8 +33,9 @@ The philosophy is to separate the hardware-specific setup from the role-specific
   - **`setup/`**
     - `01_config_headless.sh`
     - `02_clone_os_to_ssd.sh`
-    - `03_strip_microsd_rootfs.sh`
-    - `04_update_os.sh`
+    - `03_set_boot_to_ssd.sh`
+    - `04_strip_microsd_rootfs.sh`
+    - `05_update_os.sh`
   - `factory_reset.sh`
 - **`raspberry_pi/`**
   - **[`README.md`](./raspberry_pi/README.md)**

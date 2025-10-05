@@ -2,26 +2,31 @@
 
 # ====================================================================================
 #
-#           Step 3: Strip MicroSD Root Filesystem (03_strip_microsd_rootfs.sh)
+#        Step 4: Strip MicroSD Root Filesystem (04_strip_microsd_rootfs.sh)
 #
 # ====================================================================================
 #
 #  Purpose:
 #  --------
-#  This is a critical security-hardening script. Now that the full operating
-#  system is running from the NVMe SSD, the OS files on the microSD card are
-#  redundant and pose a security risk. This script removes them, leaving only
-#  the essential bootloader files in the `/boot` directory.
+#  This is an optional but highly recommended security-hardening script. Now that
+#  the full operating system is running from the NVMe SSD, the OS files on the
+#  microSD card are redundant. This script removes them, leaving only the essential
+#  bootloader files in the `/boot` directory.
 #
 #  Tutorial Goal:
 #  --------------
 #  We are converting the microSD card from a full OS disk into a simple "key"
-#  that just starts the boot process before handing off to the SSD. Leaving a
-#  complete, un-updated copy of the OS on the microSD card is dangerous. An
-#  attacker with physical access could potentially modify the boot config to load
-#  that old OS, which would not have the latest security patches. By "stripping"
-#  the root filesystem (`rootfs`), we eliminate this attack vector and ensure the
-#  SSD is the single source of truth for the running OS.
+#  that just starts the boot process. Leaving a complete, un-updated OS on the
+#  microSD is a security risk. An attacker with physical access could revert the
+#  boot config and load that old OS, bypassing any security patches we apply to
+#  the SSD. By "stripping" the root filesystem (`rootfs`), we eliminate this attack
+#  vector and ensure the SSD is the single source of truth for the running OS.
+#
+#  Workflow:
+#  ---------
+#  1. Run this script ONLY after you have rebooted and confirmed you are running
+#     from the NVMe SSD.
+#  2. `sudo ./setup/04_strip_microsd_rootfs.sh`
 #
 # ====================================================================================
 
@@ -111,4 +116,4 @@ print_border "MicroSD Cleanup Complete"
 print_success "The microSD card is now a minimal and secure boot device."
 echo "The next step is to update the OS packages."
 echo ""
-echo "Run 'sudo ./setup/04_update_os.sh' now to proceed."
+echo "Run 'sudo ./setup/05_update_os.sh' now to proceed."

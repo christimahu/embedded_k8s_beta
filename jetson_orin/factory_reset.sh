@@ -8,19 +8,16 @@
 #
 #  Purpose:
 #  --------
-#  This script performs a complete, destructive "factory reset" of a Jetson node
-#  that has already been set up. It is designed to be run from the NVMe SSD and
-#  allows you to re-image the microSD card with a pristine, default OS image
-#  and reset the boot order, all without physically removing the card.
+#  This script performs a complete, destructive "factory reset" of a Jetson node.
+#  It is designed to be run from an OS that is currently booting from the NVMe SSD.
 #
 #  Tutorial Goal:
 #  --------------
 #  This script is the logical "undo" for the setup process. While the setup scripts
-#  `02_clone_os_to_ssd.sh` and `03_strip_microsd_rootfs.sh` move the OS from the
-#  microSD to the SSD for performance, this script does the reverse. It restores a
-#  pristine OS back onto the microSD card and, critically, modifies the bootloader
-#  to force the system to boot from that card again, returning the node to its
-#  original, out-of-the-box state.
+#  (specifically `03_set_boot_to_ssd.sh`) modify the bootloader to hand off to the
+#  SSD, this script does the reverse. It restores a pristine OS back onto the microSD
+#  card and, critically, modifies the bootloader configuration to force the system
+#  to boot from that card again, returning the node to its original state.
 #
 #  Acquiring the OS Image (`sd-blob.img`):
 #  -----------------------------------------
@@ -172,6 +169,9 @@ if [ ! -f "$BOOT_CONFIG_FILE" ]; then
 fi
 
 echo "Modifying bootloader to point to the microSD card..."
+# This is the failsafe step. Even though the `dd` command created a fresh file,
+# we explicitly find the `root=UUID=` line (the SSD boot instruction) and
+# change it back to `root=/dev/mmcblk0p1` to be absolutely certain.
 sed -i "s|root=UUID=[^ ]*|root=/dev/mmcblk0p1|" "$BOOT_CONFIG_FILE"
 print_success "Boot configuration updated."
 
@@ -186,7 +186,7 @@ echo ""
 echo "After rebooting:"
 echo "  1. Connect a monitor and keyboard to the Jetson."
 echo "  2. Complete the initial on-screen Ubuntu setup."
-echo "  3. Once on the desktop, you can begin the setup process again with"
-echo "     './setup/01_config_headless.sh'."
+echo "  3. Once on the desktop, you can begin the setup process again with the"
+echo "     'setup/01_config_headless.sh' script."
 echo ""
 echo "Run 'sudo reboot' now to boot into the fresh OS."

@@ -8,22 +8,22 @@
 #
 #  Purpose:
 #  --------
-#  This script migrates the entire configured operating system from the initial
-#  microSD card to a high-performance NVMe SSD.
+#  This is an optional script for users who have installed an NVMe SSD. It clones
+#  the entire configured operating system from the microSD card to the SSD.
+#  This script performs a pure clone and does NOT modify the boot configuration.
 #
 #  Tutorial Goal:
 #  --------------
-#  The Jetson Orin platform is designed to load its initial bootloader from either
-#  on-board QSPI flash or a microSD card. It cannot boot directly from an NVMe
-#  drive from a cold start. Therefore, to gain the significant performance and
-#  reliability benefits of an SSD, we must perform a two-stage boot process:
+#  To gain the significant performance and reliability benefits of an SSD, we must
+#  first copy the OS from the microSD card to the NVMe drive. This script
+#  automates that process, creating a perfect replica of the configured OS on the
+#  new storage medium. This also serves as a "backup" of your configured headless
+#  state. Activating this new OS as the boot device is handled in the next step.
 #
-#  1. The board powers on and uses the microSD card to load the bootloader.
-#  2. We configure that bootloader to immediately hand off control to the NVMe SSD,
-#     which then loads and runs the full operating system.
-#
-#  This script automates the second part of that setup: cloning the OS and then
-#  reconfiguring the bootloader to point to the SSD for all subsequent operations.
+#  Workflow:
+#  ---------
+#  1. After powering on the headless device, SSH in.
+#  2. Run this script: `sudo ./setup/02_clone_os_to_ssd.sh`
 #
 # ====================================================================================
 
@@ -63,8 +63,8 @@ print_success "Running as root."
 
 CURRENT_ROOT_DEV=$(findmnt -n -o SOURCE /)
 if [[ "$CURRENT_ROOT_DEV" == *"nvme"* ]]; then
-    print_error "This script is intended to be run from a microSD card before migration."
-    print_error "The system is already running from the NVMe SSD. Aborting."
+    print_error "This script is intended to be run while booted from a microSD card."
+    print_error "The system is already running from the NVMe SSD. You can skip this step."
     exit 1
 fi
 print_success "System is running from microSD card. Safe to proceed with migration."
@@ -109,28 +109,15 @@ mount "$SSD_PARTITION" "$MOUNT_POINT"
 rsync -axHAWX --numeric-ids --info=progress2 --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} / "$MOUNT_POINT"
 print_success "Filesystem cloned successfully."
 
-echo "Updating boot configuration to use the SSD..."
-SSD_UUID=$(blkid -s UUID -o value "$SSD_PARTITION")
-if [ -z "$SSD_UUID" ]; then
-    print_error "Could not determine the SSD's UUID. Cannot update boot config."
-    umount "$MOUNT_POINT"
-    exit 1
-fi
-
-sed -i "s|root=[^ ]*|root=UUID=$SSD_UUID|" "/boot/extlinux/extlinux.conf"
 umount "$MOUNT_POINT"
 rmdir "$MOUNT_POINT"
-print_success "Boot configuration updated. The system will now boot from the SSD."
 
 
 # --- Final Instructions ---
 
-print_border "OS Migration Complete"
-echo "The system is now configured to run from the NVMe SSD."
-echo "A reboot is required to apply this change."
+print_border "OS Clone Complete"
+echo "The configured operating system has been successfully cloned to the NVMe SSD."
+echo "The boot configuration has NOT been changed."
 echo ""
-echo "After rebooting:"
-echo "  - Connect to the node via SSH at its static IP."
-echo "  - Run 'sudo ./setup/03_strip_microsd_rootfs.sh' to secure the node."
-echo ""
-echo "Run 'sudo reboot' now to boot from the SSD."
+echo "To make the SSD the primary boot device, run 'sudo ./03_set_boot_to_ssd.sh' now."
+echo "If you only intended to clone the OS as a backup, you can skip that step."
