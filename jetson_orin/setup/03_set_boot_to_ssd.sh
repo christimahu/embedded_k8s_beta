@@ -63,7 +63,6 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 print_success "Running as root."
 
-# This command is now more robust, using flags to ensure clean list output without formatting characters.
 SSD_PARTITION=$(lsblk -pnl -o NAME | awk '/nvme.*p1/')
 if [ -z "$SSD_PARTITION" ]; then
     print_error "No formatted NVMe SSD partition found. Please run '02_clone_os_to_ssd.sh' first."
@@ -99,7 +98,11 @@ if [ -z "$SSD_UUID" ]; then
 fi
 
 sed -i "s|root=[^ ]*|root=UUID=$SSD_UUID|" "$BOOT_CONFIG_FILE"
-print_success "Boot configuration updated. The system will now boot from the SSD."
+
+# NEW AND IMPORTANT: Force all cached file changes to be written to the disk.
+sync
+
+print_success "Boot configuration updated and saved. The system will now boot from the SSD."
 
 
 # --- Final Instructions ---
