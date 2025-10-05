@@ -133,45 +133,25 @@ sync
 print_success "MicroSD card has been re-imaged."
 
 
-# --- Part 2: Stage Image for Next Recovery Cycle ---
+# --- Part 2: Modify Boot Configuration ---
 
-print_border "Step 2: Stage Image for Next Recovery Cycle"
+print_border "Step 2: Update Boot Configuration to Boot from MicroSD"
 
+# The kernel needs a moment to re-read the partition table after `dd`.
 partprobe "$MICROSD_DEVICE"
 sleep 3
-
-MICROSD_PARTITION="${MICROSD_DEVICE}p1"
-MOUNT_POINT="/mnt/microsd_fresh"
-
-echo "Mounting new microSD filesystem to copy the recovery image..."
-mkdir -p "$MOUNT_POINT"
-mount "$MICROSD_PARTITION" "$MOUNT_POINT"
-
-IMAGE_DEST_DIR="$MOUNT_POINT/tmp"
-echo "Copying '$IMAGE_NAME' to the microSD card for future use..."
-cp "$IMAGE_PATH" "$IMAGE_DEST_DIR/"
-print_success "Recovery image staged on the microSD at $IMAGE_DEST_DIR/$IMAGE_NAME."
-
-echo "Unmounting microSD card..."
-umount "$MOUNT_POINT"
-rmdir "$MOUNT_POINT"
-
-
-# --- Part 3: Modify Boot Configuration ---
-
-print_border "Step 3: Update Boot Configuration to Boot from MicroSD"
 
 BOOT_CONFIG_FILE="/boot/extlinux/extlinux.conf"
 if [ ! -f "$BOOT_CONFIG_FILE" ]; then
     print_error "Could not find boot configuration file at $BOOT_CONFIG_FILE."
+    print_error "This may happen if the /boot directory is not mounted correctly."
     print_error "Cannot change boot device. The system will continue to boot from the SSD."
     exit 1
 fi
 
 echo "Modifying bootloader to point to the microSD card..."
-# This is the failsafe step. Even though the `dd` command created a fresh file,
-# we explicitly find the `root=UUID=` line (the SSD boot instruction) and
-# change it back to `root=/dev/mmcblk0p1` to be absolutely certain.
+# This is the failsafe step. We explicitly find the `root=UUID=` line (the SSD boot
+# instruction) and change it back to `root=/dev/mmcblk0p1` to be absolutely certain.
 sed -i "s|root=UUID=[^ ]*|root=/dev/mmcblk0p1|" "$BOOT_CONFIG_FILE"
 print_success "Boot configuration updated."
 
@@ -186,7 +166,7 @@ echo ""
 echo "After rebooting:"
 echo "  1. Connect a monitor and keyboard to the Jetson."
 echo "  2. Complete the initial on-screen Ubuntu setup."
-echo "  3. Once on the desktop, you can begin the setup process again with the"
-echo "     'setup/01_config_headless.sh' script."
+echo "  3. Once on the desktop, you will need to re-clone this repository to begin"
+echo "     the setup process again with 'setup/01_config_headless.sh'."
 echo ""
 echo "Run 'sudo reboot' now to boot into the fresh OS."

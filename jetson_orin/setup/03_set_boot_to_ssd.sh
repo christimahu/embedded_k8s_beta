@@ -63,7 +63,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 print_success "Running as root."
 
-SSD_PARTITION=$(lsblk -p -o NAME,FSTYPE | awk '/nvme.*p1.*ext4/ {print $1}')
+# This command is now more robust, using flags to ensure clean list output without formatting characters.
+SSD_PARTITION=$(lsblk -pnl -o NAME | awk '/nvme.*p1/')
 if [ -z "$SSD_PARTITION" ]; then
     print_error "No formatted NVMe SSD partition found. Please run '02_clone_os_to_ssd.sh' first."
     exit 1
