@@ -423,11 +423,11 @@ require('ibl').setup({
 -- ====================================================================================
 -- This is where we actually configure each language server to work with Neovim.
 
-local lspconfig = require('lspconfig')
+-- Modern LSP configuration uses vim.lsp.config instead of the deprecated lspconfig
+-- The new API is cleaner and better integrated with Neovim's core LSP functionality.
 
 -- Define configuration for each language server
 -- We set up each server individually with its specific settings.
--- Servers will only work if they're installed via Mason.
 local servers = {
     lua_ls = {},
     gopls = {},
@@ -444,33 +444,28 @@ local servers = {
     },
 }
 
--- Apply configuration to each server (if it's installed)
--- We wrap this in pcall to gracefully handle servers that aren't installed yet.
+-- Apply configuration to each server using the modern API
+-- This uses vim.lsp.config which is the recommended way as of nvim-lspconfig v3.0.0
 for server, config in pairs(servers) do
-    local setup_success, _ = pcall(function()
-        lspconfig[server].setup(config)
-    end)
-    -- Silently continue if server isn't installed - no errors shown to user
+    vim.lsp.config[server] = config
 end
 
 -- Rust gets special handling via rust-tools
 -- rust-tools provides extra features for Rust beyond basic LSP,
--- so we configure it separately instead of through lspconfig directly.
-pcall(function()
-    require("rust-tools").setup({
-        server = {
-            settings = {
-                ["rust-analyzer"] = {
-                    -- Run clippy (Rust linter) on save
-                    -- Clippy catches common mistakes and suggests improvements.
-                    checkOnSave = {
-                        command = "clippy",
-                    },
+-- so we configure it separately instead of through vim.lsp.config directly.
+require("rust-tools").setup({
+    server = {
+        settings = {
+            ["rust-analyzer"] = {
+                -- Run clippy (Rust linter) on save
+                -- Clippy catches common mistakes and suggests improvements.
+                checkOnSave = {
+                    command = "clippy",
                 },
             },
         },
-    })
-end)
+    },
+})
 
 -- ====================================================================================
 --                          LSP KEYBINDINGS
