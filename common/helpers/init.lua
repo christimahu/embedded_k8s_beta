@@ -1,6 +1,6 @@
 -- ====================================================================================
 --
---                    Minimal Neovim Configuration (init.lua)
+--                    Neovim Configuration (init.lua)
 --
 -- ====================================================================================
 --
@@ -19,7 +19,7 @@
 --  What This Config Provides:
 --  --------------------------
 --  - Beautiful color scheme (gruvbox-material)
---  - Language servers for Python, Rust, Go, and YAML (installed on-demand)
+--  - Language servers for Python, Rust, Go, and YAML
 --  - File browser for navigation
 --  - Smart indentation and formatting
 --  - Diagnostic messages for errors/warnings
@@ -234,8 +234,8 @@ require('packer').startup(function(use)
     use 'williamboman/mason.nvim'
 
     -- Mason-LSPConfig: Bridge between Mason and LSP
-    -- This connects Mason (which installs servers) with nvim-lspconfig (which
-    -- configures them). It ensures the servers Mason installs work with Neovim.
+    -- This connects Mason (which installs servers) with Neovim's built-in LSP.
+    -- It ensures the servers Mason installs work with Neovim.
     use 'williamboman/mason-lspconfig.nvim'
 
     -- LSPConfig: Official LSP configuration plugin
@@ -342,12 +342,27 @@ require("mason").setup({
     }
 })
 
--- Configure Mason-LSPConfig
--- We tell Mason which language servers we want, but we DON'T force automatic
--- installation. This prevents blocking on installation failures.
+-- Tell Mason which language servers to install
+-- This list defines what gets downloaded when you run the install script.
+-- Each server provides language support for specific file types:
+-- - lua_ls: Lua (for editing Neovim config)
+-- - rust_analyzer: Rust
+-- - gopls: Go (also provides Go template support for Helm)
+-- - pyright: Python (includes type checking)
+-- - yamlls: YAML (Kubernetes configs, Docker Compose, etc.)
+--
+-- The automatic_enable setting (default: true) means Mason will automatically
+-- call vim.lsp.enable() for these servers when they're installed, so they
+-- start automatically when you open matching file types.
 require("mason-lspconfig").setup({
-    ensure_installed = {},  -- Empty list - don't auto-install, let user do it manually
-    automatic_installation = false,  -- Don't block on installation
+    ensure_installed = {
+        "lua_ls",
+        "rust_analyzer",
+        "gopls",
+        "pyright",
+        "yamlls",
+    },
+    automatic_enable = true,
 })
 
 -- ====================================================================================
@@ -423,36 +438,51 @@ require('ibl').setup({
 -- ====================================================================================
 -- This is where we actually configure each language server to work with Neovim.
 
--- Modern LSP configuration uses vim.lsp.config instead of the deprecated lspconfig
--- The new API is cleaner and better integrated with Neovim's core LSP functionality.
+-- Modern LSP Configuration (Neovim 0.11+)
+-- As of Neovim 0.11, the recommended way to configure language servers is using
+-- the vim.lsp.config() API rather than the old require('lspconfig') approach.
+-- This is now the standard, built-in way to configure LSP servers.
+--
+-- The nvim-lspconfig plugin still provides the server-specific configuration
+-- data (stored in its lsp/ directory), but we access it through vim.lsp.config()
+-- instead of require('lspconfig').
+--
+-- Mason-lspconfig automatically calls vim.lsp.enable() for installed servers
+-- (via the automatic_enable setting), so servers start automatically when you
+-- open files of their associated type.
 
--- Define configuration for each language server
--- We set up each server individually with its specific settings.
-local servers = {
-    lua_ls = {},
-    gopls = {},
-    pyright = {},
-    yamlls = {
-        settings = {
-            yaml = {
-                schemas = {
-                    -- Kubernetes schema: validates Deployment, Service, Pod, etc.
-                    ["https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.28.0-standalone-strict/all.json"] = "/*.yaml",
-                },
+-- Configure each language server with its specific settings
+-- Most servers work fine with default settings (empty config table)
+
+-- Lua language server (for editing Neovim configs and Lua scripts)
+vim.lsp.config('lua_ls', {})
+
+-- Go language server (for Go code and Helm templates)
+vim.lsp.config('gopls', {})
+
+-- Python language server with type checking
+vim.lsp.config('pyright', {})
+
+-- YAML language server with Kubernetes schema support
+-- This is the only server that needs custom settings. We configure it to
+-- recognize Kubernetes YAML files and validate them against the k8s schema.
+vim.lsp.config('yamlls', {
+    settings = {
+        yaml = {
+            schemas = {
+                -- Kubernetes schema: validates Deployment, Service, Pod, etc.
+                -- This URL points to the official Kubernetes JSON schema that defines
+                -- all valid Kubernetes resource types and their properties.
+                ["https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.28.0-standalone-strict/all.json"] = "/*.yaml",
             },
         },
     },
-}
-
--- Apply configuration to each server using the modern API
--- This uses vim.lsp.config which is the recommended way as of nvim-lspconfig v3.0.0
-for server, config in pairs(servers) do
-    vim.lsp.config[server] = config
-end
+})
 
 -- Rust gets special handling via rust-tools
 -- rust-tools provides extra features for Rust beyond basic LSP,
 -- so we configure it separately instead of through vim.lsp.config directly.
+-- It handles the rust-analyzer server configuration internally.
 require("rust-tools").setup({
     server = {
         settings = {
@@ -636,29 +666,6 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 -- ====================================================================================
---                   FIRST-TIME SETUP INSTRUCTIONS
--- ====================================================================================
---
--- Language servers are NOT automatically installed to avoid blocking errors.
--- To install them manually:
---
--- 1. Open Neovim and run:  :Mason
--- 2. Find the server you want (use / to search):
---    - lua-language-server (for Lua)
---    - rust-analyzer (for Rust)
---    - gopls (for Go)
---    - pyright (for Python)
---    - yaml-language-server (for YAML/Kubernetes)
--- 3. Press 'i' to install
--- 4. Wait for installation to complete
--- 5. Restart Neovim
---
--- Or install from command line:
---   :MasonInstall lua-language-server rust-analyzer gopls pyright yaml-language-server
---
--- ====================================================================================
-
--- ====================================================================================
 --                              END OF CONFIGURATION
 -- ====================================================================================
 --
@@ -682,7 +689,7 @@ vim.api.nvim_create_autocmd("FileType", {
 --  - v           Visual mode (select text)
 --  - Esc         Return to normal mode
 --
---  LSP commands (only work if language servers are installed via :Mason):
+--  LSP commands:
 --  - gd          Go to definition
 --  - K           Show documentation
 --  - Space+rn    Rename
@@ -697,6 +704,5 @@ vim.api.nvim_create_autocmd("FileType", {
 --  - :help topic        Show help for a topic
 --  - :checkhealth       Verify Neovim setup
 --  - Space+fh           Search help interactively
---  - :Mason             Open Mason to install language servers
 --
 -- ====================================================================================
