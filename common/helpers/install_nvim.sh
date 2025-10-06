@@ -8,55 +8,12 @@
 #
 #  Purpose:
 #  --------
-#  Installs the latest version of Neovim from the unstable PPA and configures it
-#  with a minimal, well-documented init.lua file tailored for occasional editing
-#  of Kubernetes configurations, Helm templates, and hotfixes to Python/Rust/Go code.
-#
-#  Tutorial Goal:
-#  --------------
-#  This script demonstrates how to install modern development tools on ARM64 systems
-#  like the Jetson Orin. We use a PPA (Personal Package Archive) to get the latest
-#  Neovim version rather than Ubuntu's default (which is often outdated). The script
-#  also sets up the correct directory structure for Neovim configuration and installs
-#  all plugins automatically.
-#
-#  Why Neovim Instead of Vim?:
-#  ----------------------------
-#  While traditional vim is powerful, Neovim offers several advantages for our use case:
-#  - Built-in LSP (Language Server Protocol) support for intelligent code editing
-#  - Better plugin ecosystem with modern features
-#  - Asynchronous operations (faster for operations like file searching)
-#  - More active development and better ARM64 support
-#  - Lua configuration (more powerful than vimscript)
-#
-#  For simple config edits, vim would be sufficient. But for debugging Python ML code
-#  that won't run in Docker on macOS, or Rust binaries that compile on macOS but fail
-#  on ARM64, you need LSP to catch platform-specific issues. Neovim provides this
-#  without the complexity of setting up vim with external plugins.
-#
-#  What Gets Installed:
-#  --------------------
-#  - Neovim (latest from PPA)
-#  - init.lua with minimal plugins:
-#    * gruvbox-material (color scheme)
-#    * Mason (LSP server installer)
-#    * Language servers: pyright (Python), rust-analyzer (Rust), gopls (Go), yaml-language-server
-#    * nvim-tree (file browser)
-#    * Basic LSP configuration for diagnostics and formatting
-#  - A 'vim' alias pointing to nvim for convenience
-#
-#  Workflow:
-#  ---------
-#  1. Installs Neovim and dependencies.
-#  2. Creates the necessary configuration directory for the user running the script.
-#  3. Copies the init.lua file into the configuration directory.
-#  4. Runs Neovim headlessly to install all plugins via Packer.
-#  5. Runs Neovim headlessly to install all language servers via Mason.
-#  6. Sets up a 'vim' alias in the user's .bashrc for convenience.
+#  Installs Neovim and all language servers via system packages for reliable,
+#  deterministic cluster provisioning. No Mason, no compilation delays, no network
+#  timeouts. This script is designed for automation and repeatability.
 #
 # ====================================================================================
 
-# --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'
 readonly C_RED='\033[0;31m'
 readonly C_GREEN='\033[0;32m'
@@ -89,7 +46,6 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 print_success "Running as root."
 
-# Determine the user who is actually running the script, not 'root'
 if [ -n "$SUDO_USER" ]; then
     TARGET_USER="$SUDO_USER"
 else
@@ -103,12 +59,6 @@ print_success "Will install and configure for user: $TARGET_USER"
 
 print_border "Step 1: Installing Neovim and Dependencies"
 
-# --- Tutorial: Why These Dependencies ---
-# git: Required by Packer (the plugin manager) to clone plugin repositories
-# curl: Used by plugin installers to download language servers and tools
-# software-properties-common: Provides the add-apt-repository command for adding PPAs
-# ---
-
 print_info "Installing base dependencies..."
 apt-get update
 apt-get install -y git curl software-properties-common
@@ -118,17 +68,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 print_success "Dependencies installed."
-
-# --- Tutorial: Using a PPA for Latest Neovim ---
-# Ubuntu's default repositories often have outdated software. PPAs (Personal Package
-# Archives) are maintained by the community or software authors and provide newer
-# versions. The neovim-ppa/unstable PPA gives us the latest Neovim release.
-# 
-# Why "unstable"? Despite the name, this PPA contains the latest stable release of
-# Neovim. The "unstable" refers to it being updated frequently, not that the software
-# itself is unstable. For a development tool like Neovim, we want the latest features
-# and bug fixes.
-# ---
 
 print_info "Adding Neovim unstable PPA for latest version..."
 add-apt-repository ppa:neovim-ppa/unstable -y
@@ -167,13 +106,6 @@ if [ ! -f "$CONFIG_SOURCE_PATH" ]; then
     exit 1
 fi
 
-# --- Tutorial: Neovim Configuration Location ---
-# Neovim follows the XDG Base Directory specification, which means configuration
-# files go in ~/.config/nvim/ instead of the home directory. This keeps your home
-# directory cleaner. The init.lua file is the main configuration file (equivalent
-# to .vimrc in traditional vim, but using Lua instead of vimscript).
-# ---
-
 print_info "Creating configuration directory: $CONFIG_DEST_DIR"
 sudo -u "$TARGET_USER" mkdir -p "$CONFIG_DEST_DIR"
 
@@ -186,68 +118,101 @@ print_success "Neovim configuration copied."
 
 print_border "Step 3: Installing Neovim Plugins via Packer"
 
-# --- Tutorial: Plugin Installation Process ---
-# Neovim plugins are managed by Packer, a plugin manager written in Lua. When we
-# run Neovim headlessly with the PackerSync command, it:
-# 1. Reads the init.lua file to see what plugins are requested
-# 2. Clones each plugin's git repository to ~/.local/share/nvim/site/pack/packer/
-# 3. Runs any post-install hooks (like compiling Tree-sitter parsers)
-# 
-# The --headless flag runs Neovim without a UI, and we tell it to quit automatically
-# when PackerSync completes. This entire process can take 2-5 minutes on ARM64 as
-# some components need to be compiled from source.
-# ---
+print_info "This may take several minutes as plugins are installed and compiled..."
 
-print_info "This may take several minutes on ARM64 as plugins are installed and compiled..."
-
-# Run Neovim headlessly to trigger Packer installation
 sudo -u "$TARGET_USER" nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
 
 if [ $? -ne 0 ]; then
-    print_error "Plugin installation failed. This is often due to network issues or ARM64 compatibility."
-    print_info "You can manually run ':PackerSync' inside nvim to retry."
+    print_error "Plugin installation failed."
     exit 1
 else
     print_success "All Neovim plugins installed successfully."
 fi
 
-# --- Part 4: Install Language Servers via Mason ---
+# --- Part 4: Install Language Servers via System Packages ---
 
-print_border "Step 4: Installing Language Servers via Mason"
+print_border "Step 4: Installing Language Servers (System Packages)"
 
-# --- Tutorial: Why a Separate Mason Step? ---
-# Mason's automatic installation is triggered when Mason is loaded during a normal
-# nvim session. The PackerSync command only installs the Mason plugin itself, not
-# the language servers. We need a second headless nvim command that loads Mason
-# and triggers the installation of the language servers listed in ensure_installed.
-#
-# The language servers we install:
-# - lua-language-server: For editing Neovim configs and Lua scripts
-# - rust-analyzer: For Rust development
-# - gopls: For Go and Go templates (used in Helm)
-# - pyright: For Python with type checking
-# - yaml-language-server: For Kubernetes YAML files
-#
-# On ARM64, these servers may need to be compiled from source, which is why
-# we allow up to 5 minutes (300 seconds) for the installation to complete.
-# ---
+# Install Node.js and npm (needed for pyright and yaml-language-server)
+print_info "Installing Node.js and npm..."
+apt-get install -y nodejs npm
 
-print_info "Installing language servers: lua_ls, rust_analyzer, gopls, pyright, yamlls..."
-print_info "This may take 5-10 minutes on ARM64 as servers are downloaded and compiled..."
-
-# Give Packer a moment to finish settling
-sleep 3
-
-# Trigger Mason to install the language servers
-# The sleep command gives time for installations to complete before quitting
-sudo -u "$TARGET_USER" nvim --headless +"MasonInstall lua-language-server rust-analyzer gopls pyright yaml-language-server" +"sleep 300" +"qa" 2>&1 | grep -v "Warning"
-
-if [ $? -eq 0 ]; then
-    print_success "Language servers installed successfully."
-else
-    print_error "Language server installation had issues."
-    print_info "You can retry manually with: nvim then :MasonInstall <server-name>"
+if [ $? -ne 0 ]; then
+    print_error "Failed to install Node.js/npm."
+    exit 1
 fi
+print_success "Node.js and npm installed."
+
+# Install pyright (Python language server)
+print_info "Installing pyright..."
+npm install -g pyright
+
+if ! command -v pyright &> /dev/null; then
+    print_error "Failed to install pyright."
+    exit 1
+fi
+print_success "pyright installed: $(pyright --version)"
+
+# Install yaml-language-server
+print_info "Installing yaml-language-server..."
+npm install -g yaml-language-server
+
+if ! command -v yaml-language-server &> /dev/null; then
+    print_error "Failed to install yaml-language-server."
+    exit 1
+fi
+print_success "yaml-language-server installed."
+
+# Install lua-language-server
+print_info "Installing lua-language-server..."
+apt-get install -y lua-language-server
+
+if ! command -v lua-language-server &> /dev/null; then
+    print_error "Failed to install lua-language-server."
+    exit 1
+fi
+print_success "lua-language-server installed."
+
+# Install Go and gopls
+print_info "Installing Go..."
+apt-get install -y golang-go
+
+if [ $? -ne 0 ]; then
+    print_error "Failed to install Go."
+    exit 1
+fi
+print_success "Go installed."
+
+print_info "Installing gopls..."
+export GOPATH="$TARGET_HOME/go"
+sudo -u "$TARGET_USER" bash -c "export GOPATH=$TARGET_HOME/go && go install golang.org/x/tools/gopls@latest"
+
+# Add Go bin to PATH
+GO_BIN_PATH="$TARGET_HOME/go/bin"
+if [ -d "$GO_BIN_PATH" ]; then
+    if ! grep -q "$GO_BIN_PATH" "$TARGET_HOME/.bashrc"; then
+        echo "" >> "$TARGET_HOME/.bashrc"
+        echo "# Go binaries" >> "$TARGET_HOME/.bashrc"
+        echo "export PATH=\"\$PATH:$GO_BIN_PATH\"" >> "$TARGET_HOME/.bashrc"
+        print_success "Added Go bin directory to PATH."
+    fi
+fi
+
+if [ ! -f "$GO_BIN_PATH/gopls" ]; then
+    print_error "gopls installation failed."
+    exit 1
+fi
+print_success "gopls installed."
+
+# Install rust-analyzer
+print_info "Installing rust-analyzer..."
+apt-get install -y rust-analyzer
+
+if ! command -v rust-analyzer &> /dev/null; then
+    print_error "Failed to install rust-analyzer."
+    exit 1
+fi
+print_success "rust-analyzer installed."
 
 # --- Part 5: Update .bashrc ---
 
@@ -255,15 +220,6 @@ print_border "Step 5: Creating vim alias in .bashrc"
 
 BASHRC_PATH="$TARGET_HOME/.bashrc"
 ALIAS_LINE="alias vim='nvim'"
-
-# --- Tutorial: Shell Aliases ---
-# A shell alias is a shortcut command. By creating 'alias vim=nvim', we make it so
-# typing 'vim' at the command line actually runs 'nvim'. This is convenient because:
-# 1. Most muscle memory is for typing 'vim', not 'nvim'
-# 2. Many scripts and tools call 'vim' by default
-# 3. It's easier to type
-# The alias only affects the specific user, not system-wide.
-# ---
 
 if grep -qF "$ALIAS_LINE" "$BASHRC_PATH"; then
     print_success "Alias 'vim=nvim' already exists in $BASHRC_PATH."
@@ -288,7 +244,6 @@ if [ -f "$QUICK_REF_SOURCE" ]; then
     chown "$TARGET_USER:$TARGET_USER" "$QUICK_REF_DEST"
     chmod +x "$QUICK_REF_DEST"
     print_success "Quick reference installed at: $QUICK_REF_DEST"
-    print_info "Run '~/vim_quick_reference.sh' anytime you need a command reminder."
 else
     print_info "Quick reference script not found. Skipping."
 fi
@@ -299,24 +254,16 @@ print_border "Setup Complete"
 echo ""
 echo -e "${C_GREEN}Neovim installation successful!${C_RESET}"
 echo ""
+echo "All language servers installed via system packages:"
+echo "  ✓ pyright (Python)"
+echo "  ✓ gopls (Go)"
+echo "  ✓ yaml-language-server (YAML/Kubernetes)"
+echo "  ✓ lua-language-server (Lua)"
+echo "  ✓ rust-analyzer (Rust)"
+echo ""
 echo -e "${C_BLUE}To activate the 'vim' alias in your current terminal, run:${C_RESET}"
 echo ""
 echo -e "    ${C_GREEN}source ~/.bashrc${C_RESET}"
 echo ""
-echo "After running the above command, you can:"
-echo "  - Type 'vim' or 'nvim' to start Neovim"
-echo "  - Run '~/vim_quick_reference.sh' for a command cheatsheet"
-echo ""
-echo -e "${C_YELLOW}Note: The alias is already configured for all future terminal sessions.${C_RESET}"
-echo ""
-echo "First-time Neovim usage:"
-echo "  - All plugins and language servers are installed"
-echo "  - Press ':checkhealth' inside nvim to verify everything"
-echo "  - Run ':Mason' to see installed language servers"
-echo "  - All settings are documented in ~/.config/nvim/init.lua"
-echo ""
-echo "Learning resources:"
-echo "  - Run 'vimtutor' for a 20-minute interactive tutorial"
-echo "  - Visit https://www.openvim.com/ for browser-based practice"
-echo "  - Official docs: https://neovim.io/doc/"
+echo "All nodes in your cluster are now identically configured."
 echo ""
