@@ -278,7 +278,7 @@ require('packer').startup(function(use)
     -- GitHub: https://github.com/nvim-tree/nvim-tree.lua
     use {
         'nvim-tree/nvim-tree.lua',
-        requires = 'nvim-tree/nvim-web-devicons' -- Adds file icons
+        requires = 'nvim-tree/nvim-web-devicons'
     }
 
     -- Lualine: Status line
@@ -305,7 +305,7 @@ require('packer').startup(function(use)
     -- GitHub: https://github.com/nvim-telescope/telescope.nvim
     use {
       'nvim-telescope/telescope.nvim',
-      requires = { 'nvim-lua/plenary.nvim' } -- Required dependency
+      requires = { 'nvim-lua/plenary.nvim' }
     }
 
     -- Fidget: LSP progress indicator
@@ -335,9 +335,9 @@ end)
 require("mason").setup({
     ui = {
         icons = {
-            package_installed = "✓",   -- Checkmark for installed servers
-            package_pending = "➜",     -- Arrow for servers being downloaded
-            package_uninstalled = "✗"  -- X for servers not yet installed
+            package_installed = "✓",
+            package_pending = "➜",
+            package_uninstalled = "✗"
         }
     }
 })
@@ -352,13 +352,13 @@ require("mason").setup({
 -- - yamlls: YAML (Kubernetes configs, Docker Compose, etc.)
 require("mason-lspconfig").setup({
     ensure_installed = {
-        "lua_ls",           -- Lua language server
-        "rust_analyzer",    -- Rust language server
-        "gopls",            -- Go language server
-        "pyright",          -- Python language server
-        "yamlls",           -- YAML language server
+        "lua_ls",
+        "rust_analyzer",
+        "gopls",
+        "pyright",
+        "yamlls",
     },
-    automatic_installation = true,  -- Auto-install if missing
+    automatic_installation = true,
 })
 
 -- ====================================================================================
@@ -376,9 +376,9 @@ vim.cmd([[colorscheme gruvbox-material]])
 
 -- Color scheme options
 -- These variables customize gruvbox-material's appearance:
-vim.g.gruvbox_material_background = 'medium'          -- Not too dark, not too light
-vim.g.gruvbox_material_enable_italic = 1              -- Use italics for comments
-vim.g.gruvbox_material_better_performance = 1         -- Optimize for speed
+vim.g.gruvbox_material_background = 'medium'
+vim.g.gruvbox_material_enable_italic = 1
+vim.g.gruvbox_material_better_performance = 1
 
 -- ====================================================================================
 --                            FILE BROWSER SETUP
@@ -387,10 +387,10 @@ vim.g.gruvbox_material_better_performance = 1         -- Optimize for speed
 
 require('nvim-tree').setup({
     filters = {
-        dotfiles = false,  -- Show hidden files (files starting with .)
+        dotfiles = false,
     },
     view = {
-        width = 30,        -- Sidebar width in characters
+        width = 30,
     },
 })
 
@@ -401,9 +401,9 @@ require('nvim-tree').setup({
 
 require('lualine').setup({
     options = {
-        theme = 'gruvbox-material',  -- Match the color scheme
-        component_separators = { left = '', right = ''},  -- Rounded separators
-        section_separators = { left = '', right = ''},    -- Rounded separators
+        theme = 'gruvbox-material',
+        component_separators = { left = '', right = ''},
+        section_separators = { left = '', right = ''},
     }
 })
 
@@ -421,11 +421,11 @@ require('gitsigns').setup()
 
 require('ibl').setup({
     indent = {
-        char = '│',        -- The character used for indent lines
+        char = '│',
     },
     scope = {
-        enabled = true,    -- Highlight the current indentation scope
-        show_start = true, -- Show a marker at the start of the scope
+        enabled = true,
+        show_start = true,
     }
 })
 
@@ -436,50 +436,48 @@ require('ibl').setup({
 
 local lspconfig = require('lspconfig')
 
--- Setup handlers for all language servers
--- Mason-lspconfig provides a convenient way to configure all servers at once.
--- The handlers table defines what happens when each server is installed.
-require("mason-lspconfig").setup_handlers({
-    -- Default handler: used for most language servers
-    -- This function runs for any server not specifically handled below.
-    function(server_name)
-        lspconfig[server_name].setup({})
-    end,
-
-    -- Rust-specific handler
-    -- rust-tools provides extra features for Rust, so we use it instead of
-    -- the default lspconfig setup.
-    ["rust_analyzer"] = function()
-        require("rust-tools").setup({
-            server = {
-                settings = {
-                    ["rust-analyzer"] = {
-                        -- Run clippy (Rust linter) on save
-                        -- Clippy catches common mistakes and suggests improvements.
-                        checkOnSave = {
-                            command = "clippy",
-                        },
-                    },
+-- Define configuration for each language server
+-- We set up each server individually with its specific settings.
+-- This replaces the old setup_handlers approach which was deprecated.
+local servers = {
+    lua_ls = {},
+    gopls = {},
+    pyright = {},
+    yamlls = {
+        settings = {
+            yaml = {
+                schemas = {
+                    -- Kubernetes schema: validates Deployment, Service, Pod, etc.
+                    ["https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.28.0-standalone-strict/all.json"] = "/*.yaml",
                 },
             },
-        })
-    end,
+        },
+    },
+}
 
-    -- YAML-specific handler
-    -- Configure the YAML language server to recognize Kubernetes schemas.
-    -- This gives you autocomplete and validation for Kubernetes YAML files.
-    ["yamlls"] = function()
-        lspconfig.yamlls.setup({
-            settings = {
-                yaml = {
-                    schemas = {
-                        -- Kubernetes schema: validates Deployment, Service, Pod, etc.
-                        ["https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.28.0-standalone-strict/all.json"] = "/*.yaml",
-                    },
+-- Apply configuration to each server
+-- This loop sets up each language server using lspconfig.
+-- For most servers, we use default settings (empty table {}).
+-- For YAML, we provide custom schema configuration for Kubernetes.
+for server, config in pairs(servers) do
+    lspconfig[server].setup(config)
+end
+
+-- Rust gets special handling via rust-tools
+-- rust-tools provides extra features for Rust beyond basic LSP,
+-- so we configure it separately instead of through lspconfig directly.
+require("rust-tools").setup({
+    server = {
+        settings = {
+            ["rust-analyzer"] = {
+                -- Run clippy (Rust linter) on save
+                -- Clippy catches common mistakes and suggests improvements.
+                checkOnSave = {
+                    command = "clippy",
                 },
             },
-        })
-    end,
+        },
+    },
 })
 
 -- ====================================================================================
@@ -583,14 +581,14 @@ require("fidget").setup({})
 -- Trouble: Diagnostic list
 -- Provides a nice panel for viewing all errors/warnings.
 require("trouble").setup({
-  icons = false,              -- Use text instead of icons (more compatible)
-  fold_open = "v",            -- Character to show open folds
-  fold_closed = ">",          -- Character to show closed folds
+  icons = false,
+  fold_open = "v",
+  fold_closed = ">",
   signs = {
-    error = "E",              -- E for errors
-    warning = "W",            -- W for warnings
-    hint = "H",               -- H for hints
-    information = "I"         -- I for information
+    error = "E",
+    warning = "W",
+    hint = "H",
+    information = "I"
   },
 })
 
@@ -642,11 +640,11 @@ end
 -- runs every time Neovim detects a file's type (FileType event). It sets the
 -- indentation to 2 spaces for every file type.
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = "*",  -- The asterisk means "all file types"
+  pattern = "*",
   callback = function()
-    vim.bo.shiftwidth = 2   -- Indent width (used by >> and <<)
-    vim.bo.tabstop = 2      -- Tab display width
-    vim.bo.expandtab = true -- Convert tabs to spaces
+    vim.bo.shiftwidth = 2
+    vim.bo.tabstop = 2
+    vim.bo.expandtab = true
   end,
 })
 

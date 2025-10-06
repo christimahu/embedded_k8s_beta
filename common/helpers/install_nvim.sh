@@ -60,6 +60,7 @@ readonly C_RESET='\033[0m'
 readonly C_RED='\033[0;31m'
 readonly C_GREEN='\033[0;32m'
 readonly C_YELLOW='\033[0;33m'
+readonly C_BLUE='\033[0;34m'
 
 print_success() {
     echo -e "${C_GREEN}[OK] $1${C_RESET}"
@@ -232,7 +233,7 @@ else
     echo "" >> "$BASHRC_PATH"
     echo "# Alias for Neovim" >> "$BASHRC_PATH"
     echo "$ALIAS_LINE" >> "$BASHRC_PATH"
-    print_success "Alias added."
+    print_success "Alias added to $BASHRC_PATH."
 fi
 
 # --- Part 5: Copy Quick Reference Script ---
@@ -256,19 +257,27 @@ fi
 # --- Final Instructions ---
 
 print_border "Setup Complete"
-print_info "Neovim and all plugins have been installed for user '$TARGET_USER'."
 echo ""
-echo "To use Neovim:"
-echo "  1. Start a new terminal session or run: source ~/.bashrc"
-echo "  2. Type 'vim' or 'nvim' to start"
-echo "  3. Run '~/vim_quick_reference.sh' for a command cheatsheet"
+echo -e "${C_GREEN}Neovim installation successful!${C_RESET}"
 echo ""
-echo "First-time setup:"
-echo "  - Language servers will download on first use (this is normal)"
-echo "  - Press ':checkhealth' in nvim to verify everything works"
-echo "  - See init.lua comments for detailed explanations of every setting"
+echo -e "${C_BLUE}To activate the 'vim' alias in your current terminal, run:${C_RESET}"
 echo ""
-echo "Official resources:"
-echo "  - Neovim documentation: https://neovim.io/doc/"
-echo "  - Vim basics tutorial: Run 'vimtutor' in your terminal"
-echo "  - Interactive Vim tutorial: https://www.openvim.com/"
+echo -e "    ${C_GREEN}source ~/.bashrc${C_RESET}"
+echo ""
+echo "After running the above command, you can:"
+echo "  - Type 'vim' or 'nvim' to start Neovim"
+echo "  - Run '~/vim_quick_reference.sh' for a command cheatsheet"
+echo ""
+echo -e "${C_YELLOW}Note: The alias is already configured for all future terminal sessions.${C_RESET}"
+echo ""
+echo "First-time Neovim usage notes:"
+echo "  - Language servers will finish installing on first launch"
+echo "  - You may see brief status messages - this is normal"
+echo "  - Press ':checkhealth' inside nvim to verify setup"
+echo "  - All settings are documented in ~/.config/nvim/init.lua"
+echo ""
+echo "Learning resources:"
+echo "  - Run 'vimtutor' for a 20-minute interactive tutorial"
+echo "  - Visit https://www.openvim.com/ for browser-based practice"
+echo "  - Official docs: https://neovim.io/doc/"
+echo ""
