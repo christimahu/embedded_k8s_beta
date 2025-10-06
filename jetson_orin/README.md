@@ -58,7 +58,7 @@ jetson_orin/
     ├── 03_set_boot_to_ssd.sh # Configure bootloader to use SSD
     ├── 04_strip_microsd_rootfs.sh # Remove redundant OS files from microSD
     ├── 05_update_os.sh       # Apply system updates
-    └── verify_setup.sh       # Verify configuration (run AFTER all steps)
+    └── 06_verify_setup.sh    # Verify configuration (run AFTER all steps)
 ```
 
 ---
@@ -149,7 +149,7 @@ sudo ./05_update_os.sh
 * **Action:** Run this **only after completing all setup steps** to verify the node is in the correct final state.
 
 ``` bash
-sudo ./verify_setup.sh
+sudo ./06_verify_setup.sh
 ```
 
 **At this point, your Jetson node is fully prepared, secure, and performant. You are ready to proceed with the scripts in the `common/` directory to install Kubernetes.**
@@ -265,7 +265,7 @@ sudo umount /mnt
 
 ### "Verify script shows failures"
 
-**Do not run `verify_setup.sh` in the middle of the setup sequence.** It checks for the final state after ALL steps are complete. Failures are expected if you haven't finished all steps 01-05.
+**Do not run `06_verify_setup.sh` in the middle of the setup sequence.** It checks for the final state after ALL steps are complete. Failures are expected if you haven't finished all steps 01-05.
 
 ### "I need to start over completely"
 
@@ -286,7 +286,7 @@ This gives you a factory-fresh starting point.
 - **Script 04 is optional** - the system works fine with the full OS still on the microSD
 - **NVRAM is separate from storage** - re-imaging the microSD does not reset NVRAM
 - **Run scripts in order** - the sequence 01→02→03→04→05 is designed to be executed sequentially
-- **Verify only at the end** - `verify_setup.sh` checks the final state, not intermediate states
+- **Verify only at the end** - `06_verify_setup.sh` checks the final state, not intermediate states
 
 ---
 
