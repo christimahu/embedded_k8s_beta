@@ -1,6 +1,6 @@
 -- ====================================================================================
 --
---                    Neovim Configuration (init.lua)
+--                    Minimal Neovim Configuration (init.lua)
 --
 -- ====================================================================================
 --
@@ -255,11 +255,14 @@ require('packer').startup(function(use)
     -- GitHub: https://github.com/Vimjas/vim-python-pep8-indent
     use 'Vimjas/vim-python-pep8-indent'
 
-    -- Rust tools
-    -- Adds Rust-specific commands like running tests, viewing crate documentation,
-    -- and inline type hints. Makes Rust development much smoother.
-    -- GitHub: https://github.com/simrat39/rust-tools.nvim
-    use 'simrat39/rust-tools.nvim'
+    -- Rustaceanvim: Modern Rust development plugin
+    -- This is the actively-maintained replacement for rust-tools.nvim. It provides
+    -- enhanced Rust development features and is fully compatible with Neovim 0.11+
+    -- and the modern vim.lsp.config API. Unlike rust-tools, it doesn't require a
+    -- setup() call and automatically handles rust-analyzer configuration.
+    -- Features: code actions, debugging support, inlay hints, and more.
+    -- GitHub: https://github.com/mrcjkb/rustaceanvim
+    use 'mrcjkb/rustaceanvim'
 
     -- Go plugin
     -- Provides Go-specific commands like :GoBuild, :GoTest, and :GoRun. Essential
@@ -346,10 +349,12 @@ require("mason").setup({
 -- This list defines what gets downloaded when you run the install script.
 -- Each server provides language support for specific file types:
 -- - lua_ls: Lua (for editing Neovim config)
--- - rust_analyzer: Rust
 -- - gopls: Go (also provides Go template support for Helm)
 -- - pyright: Python (includes type checking)
 -- - yamlls: YAML (Kubernetes configs, Docker Compose, etc.)
+--
+-- Note: We do NOT include rust_analyzer here because rustaceanvim handles
+-- rust-analyzer installation and configuration automatically.
 --
 -- The automatic_enable setting (default: true) means Mason will automatically
 -- call vim.lsp.enable() for these servers when they're installed, so they
@@ -357,7 +362,6 @@ require("mason").setup({
 require("mason-lspconfig").setup({
     ensure_installed = {
         "lua_ls",
-        "rust_analyzer",
         "gopls",
         "pyright",
         "yamlls",
@@ -479,23 +483,52 @@ vim.lsp.config('yamlls', {
     },
 })
 
--- Rust gets special handling via rust-tools
--- rust-tools provides extra features for Rust beyond basic LSP,
--- so we configure it separately instead of through vim.lsp.config directly.
--- It handles the rust-analyzer server configuration internally.
-require("rust-tools").setup({
+-- ====================================================================================
+--                         RUST CONFIGURATION (RUSTACEANVIM)
+-- ====================================================================================
+-- Configure rustaceanvim - the modern, actively-maintained replacement for rust-tools
+-- This plugin automatically handles rust-analyzer configuration and provides
+-- enhanced Rust development features without requiring manual setup() calls.
+--
+-- Why rustaceanvim instead of rust-tools?
+-- - rust-tools is abandoned (last update was years ago)
+-- - rustaceanvim is compatible with Neovim 0.11+ and vim.lsp.config
+-- - No setup() call needed (it's "setup-less")
+-- - Automatically detects and configures rust-analyzer from Mason or system
+-- - Provides additional commands via :RustLsp (debugging, runnables, etc.)
+-- - No deprecation warnings with modern Neovim
+--
+-- Configuration is done via the vim.g.rustaceanvim global variable.
+-- This must be set BEFORE the plugin loads (which is why it's here, not in a
+-- plugin setup function).
+
+vim.g.rustaceanvim = {
+    -- LSP server configuration
     server = {
         settings = {
             ["rust-analyzer"] = {
-                -- Run clippy (Rust linter) on save
+                -- Run clippy (Rust linter) on save instead of cargo check
                 -- Clippy catches common mistakes and suggests improvements.
+                -- This provides better diagnostics than basic cargo check.
                 checkOnSave = {
                     command = "clippy",
+                },
+                -- Enable all Cargo features
+                -- This ensures rust-analyzer understands all code paths,
+                -- even those behind feature flags.
+                cargo = {
+                    allFeatures = true,
+                },
+                -- Enable procedural macro support
+                -- Rust procedural macros (like derive macros) require special
+                -- handling. This enables rust-analyzer to understand them.
+                procMacro = {
+                    enable = true,
                 },
             },
         },
     },
-})
+}
 
 -- ====================================================================================
 --                          LSP KEYBINDINGS
@@ -694,6 +727,11 @@ vim.api.nvim_create_autocmd("FileType", {
 --  - K           Show documentation
 --  - Space+rn    Rename
 --  - Space+f     Format file
+--
+--  Rust-specific (rustaceanvim):
+--  - :RustLsp    Show all available Rust commands
+--  - :RustLsp runnables    Run Rust code
+--  - :RustLsp debuggables  Debug Rust code
 --
 --  File navigation:
 --  - Ctrl+n      Toggle file tree
