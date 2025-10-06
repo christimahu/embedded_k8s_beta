@@ -51,7 +51,8 @@
 #  2. Creates the necessary configuration directory for the user running the script.
 #  3. Copies the init.lua file into the configuration directory.
 #  4. Runs Neovim headlessly to install all plugins via Packer.
-#  5. Sets up a 'vim' alias in the user's .bashrc for convenience.
+#  5. Runs Neovim headlessly to install all language servers via Mason.
+#  6. Sets up a 'vim' alias in the user's .bashrc for convenience.
 #
 # ====================================================================================
 
@@ -198,7 +199,6 @@ print_border "Step 3: Installing Neovim Plugins via Packer"
 # ---
 
 print_info "This may take several minutes on ARM64 as plugins are installed and compiled..."
-print_info "Language servers (pyright, rust-analyzer, gopls, yaml-language-server) will be downloaded..."
 
 # Run Neovim headlessly to trigger Packer installation
 sudo -u "$TARGET_USER" nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
@@ -206,13 +206,52 @@ sudo -u "$TARGET_USER" nvim --headless -c 'autocmd User PackerComplete quitall' 
 if [ $? -ne 0 ]; then
     print_error "Plugin installation failed. This is often due to network issues or ARM64 compatibility."
     print_info "You can manually run ':PackerSync' inside nvim to retry."
+    exit 1
 else
     print_success "All Neovim plugins installed successfully."
 fi
 
-# --- Part 4: Update .bashrc ---
+# --- Part 4: Install Language Servers via Mason ---
 
-print_border "Step 4: Creating vim alias in .bashrc"
+print_border "Step 4: Installing Language Servers via Mason"
+
+# --- Tutorial: Why a Separate Mason Step? ---
+# Mason's automatic installation is triggered when Mason is loaded during a normal
+# nvim session. The PackerSync command only installs the Mason plugin itself, not
+# the language servers. We need a second headless nvim command that loads Mason
+# and triggers the installation of the language servers listed in ensure_installed.
+#
+# The language servers we install:
+# - lua-language-server: For editing Neovim configs and Lua scripts
+# - rust-analyzer: For Rust development
+# - gopls: For Go and Go templates (used in Helm)
+# - pyright: For Python with type checking
+# - yaml-language-server: For Kubernetes YAML files
+#
+# On ARM64, these servers may need to be compiled from source, which is why
+# we allow up to 5 minutes (300 seconds) for the installation to complete.
+# ---
+
+print_info "Installing language servers: lua_ls, rust_analyzer, gopls, pyright, yamlls..."
+print_info "This may take 5-10 minutes on ARM64 as servers are downloaded and compiled..."
+
+# Give Packer a moment to finish settling
+sleep 3
+
+# Trigger Mason to install the language servers
+# The sleep command gives time for installations to complete before quitting
+sudo -u "$TARGET_USER" nvim --headless +"MasonInstall lua-language-server rust-analyzer gopls pyright yaml-language-server" +"sleep 300" +"qa" 2>&1 | grep -v "Warning"
+
+if [ $? -eq 0 ]; then
+    print_success "Language servers installed successfully."
+else
+    print_error "Language server installation had issues."
+    print_info "You can retry manually with: nvim then :MasonInstall <server-name>"
+fi
+
+# --- Part 5: Update .bashrc ---
+
+print_border "Step 5: Creating vim alias in .bashrc"
 
 BASHRC_PATH="$TARGET_HOME/.bashrc"
 ALIAS_LINE="alias vim='nvim'"
@@ -236,9 +275,9 @@ else
     print_success "Alias added to $BASHRC_PATH."
 fi
 
-# --- Part 5: Copy Quick Reference Script ---
+# --- Part 6: Copy Quick Reference Script ---
 
-print_border "Step 5: Installing Vim Quick Reference"
+print_border "Step 6: Installing Vim Quick Reference"
 
 QUICK_REF_SOURCE="$SCRIPT_DIR/vim_quick_reference.sh"
 QUICK_REF_DEST="$TARGET_HOME/vim_quick_reference.sh"
@@ -270,10 +309,10 @@ echo "  - Run '~/vim_quick_reference.sh' for a command cheatsheet"
 echo ""
 echo -e "${C_YELLOW}Note: The alias is already configured for all future terminal sessions.${C_RESET}"
 echo ""
-echo "First-time Neovim usage notes:"
-echo "  - Language servers will finish installing on first launch"
-echo "  - You may see brief status messages - this is normal"
-echo "  - Press ':checkhealth' inside nvim to verify setup"
+echo "First-time Neovim usage:"
+echo "  - All plugins and language servers are installed"
+echo "  - Press ':checkhealth' inside nvim to verify everything"
+echo "  - Run ':Mason' to see installed language servers"
 echo "  - All settings are documented in ~/.config/nvim/init.lua"
 echo ""
 echo "Learning resources:"
