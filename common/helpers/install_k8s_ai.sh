@@ -136,38 +136,32 @@ print_border "Step 1: Installing kubectl-ai"
 # to use.
 # ---
 
-print_info "Checking for Go installation..."
-if ! command -v go &> /dev/null; then
-    print_info "Go not found. Installing Go..."
-    apt-get update
-    apt-get install -y golang-go
-    if ! command -v go &> /dev/null; then
-        print_error "Failed to install Go. Cannot proceed with kubectl-ai."
-        exit 1
-    fi
-fi
-print_success "Go is available."
+print_info "Installing kubectl-ai using the official installer script..."
+# The official install.sh script handles architecture detection and downloads the
+# correct pre-compiled binary. This is the most reliable method.
+curl -sSL https://raw.githubusercontent.com/GoogleCloudPlatform/kubectl-ai/main/install.sh | sudo -u "$TARGET_USER" bash
 
-print_info "Installing kubectl-ai via go install..."
-# The actual package path is in the /cmd/kubectl-ai subdirectory of the repo.
-sudo -u "$TARGET_USER" bash -c "export HOME=$TARGET_HOME && go install github.com/GoogleCloudPlatform/kubectl-ai/cmd/kubectl-ai@latest"
-
-GO_BIN_PATH="$TARGET_HOME/go/bin"
-if [ -d "$GO_BIN_PATH" ]; then
-    if ! grep -q "$GO_BIN_PATH" "$TARGET_HOME/.bashrc"; then
+# The installer places the binary in ~/.local/bin
+INSTALL_PATH="$TARGET_HOME/.local/bin"
+if [ -d "$INSTALL_PATH" ]; then
+    if ! grep -q "$INSTALL_PATH" "$TARGET_HOME/.bashrc"; then
         echo "" >> "$TARGET_HOME/.bashrc"
-        echo "# Go binaries" >> "$TARGET_HOME/.bashrc"
-        echo "export PATH=\"\$PATH:$GO_BIN_PATH\"" >> "$TARGET_HOME/.bashrc"
-        print_success "Added Go bin directory to PATH in ~/.bashrc"
+        echo "# kubectl-ai path" >> "$TARGET_HOME/.bashrc"
+        echo "export PATH=\"\$PATH:$INSTALL_PATH\"" >> "$TARGET_HOME/.bashrc"
+        print_success "Added kubectl-ai directory to PATH in ~/.bashrc"
     fi
 fi
 
-if [ ! -f "$GO_BIN_PATH/kubectl-ai" ]; then
-    print_error "kubectl-ai installation failed."
+# We need to add the path to the current shell to verify the command
+export PATH="$PATH:$INSTALL_PATH"
+
+if ! command -v kubectl-ai &> /dev/null; then
+    print_error "kubectl-ai installation failed. Please check the output above."
     exit 1
 fi
 
-print_success "kubectl-ai installed to $GO_BIN_PATH/kubectl-ai"
+print_success "kubectl-ai installed successfully."
+
 
 # --- Part 2: Install k8sgpt ---
 
