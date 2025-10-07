@@ -91,7 +91,6 @@ else
     print_error "Could not determine the target user. Please run with 'sudo'."
     exit 1
 fi
-TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
 print_success "Will install tools for user: $TARGET_USER"
 
 if ! command -v kubectl &> /dev/null; then
@@ -121,47 +120,34 @@ fi
 print_border "Step 1: Installing kubectl-ai"
 
 # --- Tutorial: What is kubectl-ai? ---
-# kubectl-ai is a kubectl plugin that uses large language models (LLMs) to
-# translate natural language queries into kubectl commands. Instead of remembering
-# complex syntax, you describe what you want in plain English.
-#
-# How it works:
-# 1. You type a question like: kubectl ai "show me all pods in crashloopbackoff"
-# 2. The plugin sends your query to an LLM.
-# 3. The LLM generates the appropriate kubectl command.
-# 4. You are shown the command and asked to confirm before it runs.
-#
-# This is valuable for learning Kubernetes, performing complex queries, and
-# troubleshooting under pressure. Because you approve every command, it's safe
-# to use.
+# kubectl-ai is a kubectl plugin that uses LLMs to translate natural language
+# queries into kubectl commands. It is a safe and powerful way to learn and use
+# Kubernetes without memorizing complex syntax.
 # ---
 
-print_info "Installing kubectl-ai using the official installer script..."
-# The official install.sh script handles architecture detection and downloads the
-# correct pre-compiled binary. This is the most reliable method.
-curl -sSL https://raw.githubusercontent.com/GoogleCloudPlatform/kubectl-ai/main/install.sh | sudo -u "$TARGET_USER" bash
+print_info "Installing kubectl-ai from GitHub releases..."
+KUBECTL_AI_VERSION="v0.0.26"
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) KC_AI_ARCH="amd64" ;;
+    aarch64|arm64) KC_AI_ARCH="arm64" ;;
+    *) print_error "Unsupported architecture for kubectl-ai: $ARCH"; exit 1 ;;
+esac
 
-# The installer places the binary in ~/.local/bin
-INSTALL_PATH="$TARGET_HOME/.local/bin"
-if [ -d "$INSTALL_PATH" ]; then
-    if ! grep -q "$INSTALL_PATH" "$TARGET_HOME/.bashrc"; then
-        echo "" >> "$TARGET_HOME/.bashrc"
-        echo "# kubectl-ai path" >> "$TARGET_HOME/.bashrc"
-        echo "export PATH=\"\$PATH:$INSTALL_PATH\"" >> "$TARGET_HOME/.bashrc"
-        print_success "Added kubectl-ai directory to PATH in ~/.bashrc"
-    fi
-fi
+KC_AI_URL="https://github.com/GoogleCloudPlatform/kubectl-ai/releases/download/${KUBECTL_AI_VERSION}/kubectl-ai_Linux_${KC_AI_ARCH}.tar.gz"
 
-# We need to add the path to the current shell to verify the command
-export PATH="$PATH:$INSTALL_PATH"
+print_info "Downloading kubectl-ai ${KUBECTL_AI_VERSION} for ${KC_AI_ARCH}..."
+curl -L "$KC_AI_URL" -o /tmp/kubectl-ai.tar.gz
+tar -xzf /tmp/kubectl-ai.tar.gz -C /tmp
+mv /tmp/kubectl-ai /usr/local/bin/
+chmod +x /usr/local/bin/kubectl-ai
+rm /tmp/kubectl-ai.tar.gz
 
 if ! command -v kubectl-ai &> /dev/null; then
-    print_error "kubectl-ai installation failed. Please check the output above."
+    print_error "kubectl-ai installation failed."
     exit 1
 fi
-
 print_success "kubectl-ai installed successfully."
-
 
 # --- Part 2: Install k8sgpt ---
 
@@ -169,29 +155,22 @@ print_border "Step 2: Installing k8sgpt"
 
 # --- Tutorial: What is k8sgpt? ---
 # k8sgpt is a CNCF Sandbox project that acts as an AI-powered diagnostic tool
-# for your Kubernetes cluster. It:
-# - Scans your cluster for issues (resource constraints, misconfigurations, etc.).
-# - Identifies problems and uses an LLM to explain WHY the problem is happening.
-# - Suggests specific remediation steps in human-readable language.
-#
-# Unlike traditional monitoring which just alerts, k8sgpt provides CONTEXT. For
-# example, instead of "Pod is CrashLooping," it might explain that the container
-# is trying to bind to a privileged port without the correct permissions.
-#
-# It can use cloud APIs or be configured to use local models for full privacy.
+# for your Kubernetes cluster. It scans for issues and uses an LLM to explain
+# the root cause and suggest remediation steps.
 # ---
 
 print_info "Installing k8sgpt from GitHub releases..."
-ARCH=$(uname -m)
 case $ARCH in
     x86_64) K8SGPT_ARCH="amd64" ;;
     aarch64|arm64) K8SGPT_ARCH="arm64" ;;
-    *) print_error "Unsupported architecture: $ARCH"; exit 1 ;;
+    *) print_error "Unsupported architecture for k8sgpt: $ARCH"; exit 1 ;;
 esac
 
 K8SGPT_VERSION="v0.3.31"
-K8SGPT_URL="https://github.com/k8sgpt-ai/k8sgpt/releases/download/${K8SGPT_VERSION}/k8sgpt_${K8SGPT_VERSION#v}_linux_${K8SGPT_ARCH}.tar.gz"
+# CORRECTED URL: The filename does not contain the version number.
+K8SGPT_URL="https://github.com/k8sgpt-ai/k8sgpt/releases/download/${K8SGPT_VERSION}/k8sgpt_linux_${K8SGPT_ARCH}.tar.gz"
 
+print_info "Downloading k8sgpt ${K8SGPT_VERSION} for ${K8SGPT_ARCH}..."
 curl -L "$K8SGPT_URL" -o /tmp/k8sgpt.tar.gz
 tar -xzf /tmp/k8sgpt.tar.gz -C /tmp
 mv /tmp/k8sgpt /usr/local/bin/
@@ -202,7 +181,6 @@ if ! command -v k8sgpt &> /dev/null; then
     print_error "Failed to install k8sgpt."
     exit 1
 fi
-
 print_success "k8sgpt installed: $(k8sgpt version)"
 
 # --- Part 3: Configuration Instructions ---
@@ -217,11 +195,11 @@ echo "  2. Set for kubectl-ai: export OPENAI_API_KEY='your-key-here'"
 echo "  3. Set for k8sgpt: k8sgpt auth add openai --apikey YOUR_API_KEY"
 echo ""
 echo -e "${C_BLUE}To use a local model like Mistral (Free):${C_RESET}"
-echo "  1. Install Ollama: curl https://ollama.ai/install.sh | sh"
+echo "  1. Install Ollama on a machine: curl https://ollama.ai/install.sh | sh"
 echo "  2. Pull the model: ollama pull mistral"
 echo "  3. Configure k8sgpt: k8sgpt auth add ollama --model mistral"
 echo "  4. Configure kubectl-ai: export OPENAI_API_BASE=http://localhost:11434"
 echo ""
-echo -e "${C_MAGENTA}Note: Add 'export' commands to ~/.bashrc to make them permanent.${C_RESET}"
+echo -e "${C_MAGENTA}Note: Add 'export' commands to your ~/.bashrc to make them permanent.${C_RESET}"
 echo ""
 print_success "AI-powered Kubernetes tools installed successfully!"
