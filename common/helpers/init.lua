@@ -1,137 +1,120 @@
 -- ====================================================================================
 --
---                    Minimal Neovim Configuration (init.lua)
+--                       Neovim Configuration (init.lua)
 --
 -- ====================================================================================
 --
 --  Purpose:
 --  --------
---  This is a streamlined Neovim configuration focused on editing Kubernetes configs,
---  Helm templates, and occasional hotfixes for Python/Rust/Go code. It provides
---  language-aware editing without the overhead of a full IDE setup.
+--  A minimal, robust Neovim configuration for editing Kubernetes YAML, Helm templates,
+--  and shell scripts. It prioritizes stability and a light footprint over
+--  IDE-like features, making it perfect for automated deployment on cluster nodes.
 --
---  Philosophy:
---  -----------
---  This config is designed for someone who primarily develops on macOS and uses
---  the Jetson/Raspberry Pi for testing, debugging platform-specific issues, and
---  quick iteration. It's NOT a replacement for a full development environment.
---
---  What This Config Provides:
---  --------------------------
---  - Beautiful color scheme (gruvbox-material)
---  - Language servers for Python, Rust, Go, and YAML (installed via system packages)
---  - File browser for navigation
---  - Smart indentation and formatting
---  - Diagnostic messages for errors/warnings
---  - No autocomplete UI (keep it simple)
---  - No AI assistants (Copilot stays on your Mac)
---
---  Learning Resources:
---  -------------------
---  If you're new to Vim/Neovim, start here:
---  1. Run 'vimtutor' in your terminal (20-minute interactive tutorial)
---  2. https://www.openvim.com/ (interactive browser tutorial)
---  3. https://vim.rtorr.com/ (quick command reference)
---  4. https://neovim.io/doc/user/ (official documentation)
---
---  Quick Reference:
---  ----------------
---  Run ~/vim_quick_reference.sh for common commands anytime you forget something.
+--  Philosophy - The "Neovim Appliance":
+--  ------------------------------------
+--  - No LSPs: This configuration does not use the Language Server Protocol (LSP).
+--    This is an intentional design choice to avoid dependencies on external
+--    runtimes like Node.js or Go, keeping the host OS clean.
+--  - Highlighting via Tree-sitter: We use Neovim's fast, built-in Tree-sitter
+--    engine for syntax highlighting. It parses code like a compiler, providing
+--    more accurate and granular highlighting than older regex-based systems.
+--  - Core Quality-of-Life Only: The plugins selected provide the essentials for
+--    a modern editing experience: a color scheme, file browser, status line, and
+--    fuzzy finder. It explicitly omits features like autocompletion, git
+--    integration, and real-time diagnostics to maintain simplicity and stability.
 --
 -- ====================================================================================
 
--- ====================================================================================
---                              BASIC SETTINGS
--- ====================================================================================
 
-vim.opt.compatible = false
-vim.opt.encoding = 'utf-8'
-vim.opt.background = 'dark'
-vim.opt.number = true
-vim.opt.tabstop = 2
-vim.opt.shiftwidth = 2
-vim.opt.expandtab = true
-vim.opt.autoindent = true
-vim.opt.copyindent = true
-vim.opt.hlsearch = true
-vim.opt.scrolloff = 5
-vim.opt.splitbelow = true
-vim.opt.splitright = true
-vim.opt.wildmenu = true
-vim.opt.showmatch = true
-vim.opt.termguicolors = true
-vim.opt.spell = true
-vim.opt.swapfile = false
-vim.opt.backup = false
-vim.opt.undolevels = 5000
-vim.opt.history = 5000
-vim.opt.autoread = true
-vim.opt.backspace = 'indent,eol,start'
-vim.opt.signcolumn = 'yes'
-vim.opt.cursorline = true
-vim.opt.wrap = false
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
+-- ====================================================================================
+--                              BASIC EDITOR SETTINGS
+-- ====================================================================================
+-- These options configure the fundamental behavior of the editor.
+vim.opt.compatible = false                  -- Use Neovim defaults, not Vi-compatible
+vim.opt.encoding = 'utf-8'                  -- Use UTF-8 encoding
+vim.opt.background = 'dark'                 -- Assume a dark terminal background
+vim.opt.number = true                       -- Show line numbers
+vim.opt.tabstop = 2                         -- Number of spaces a tab counts for
+vim.opt.shiftwidth = 2                      -- Number of spaces to use for autoindent
+vim.opt.expandtab = true                    -- Use spaces instead of tab characters
+vim.opt.autoindent = true                   -- Copy indent from current line when starting a new line
+vim.opt.hlsearch = true                     -- Highlight all search matches
+vim.opt.scrolloff = 5                       -- Keep 5 lines of context around the cursor
+vim.opt.splitbelow = true                   -- A horizontal split will open below
+vim.opt.splitright = true                   -- A vertical split will open to the right
+vim.opt.termguicolors = true                -- Enable 24-bit RGB colors for themes
+vim.opt.swapfile = false                    -- Do not create swap files
+vim.opt.backup = false                      -- Do not create backup files
+vim.opt.backspace = 'indent,eol,start'      -- Allow backspace over everything in insert mode
+vim.opt.signcolumn = 'yes'                  -- Always show the sign column to prevent jitter
+vim.opt.cursorline = true                   -- Highlight the current line
+vim.opt.wrap = false                        -- Do not wrap long lines
+vim.opt.ignorecase = true                   -- Ignore case in search patterns
+vim.opt.smartcase = true                    -- Override ignorecase if pattern has uppercase letters
+
 
 -- ====================================================================================
 --                           PLUGIN MANAGEMENT (PACKER)
 -- ====================================================================================
-
+-- This section automatically installs the Packer plugin manager if it's not present.
 local install_path = vim.fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
 if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
   vim.fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
   vim.cmd('packadd packer.nvim')
 end
 
+-- This is the main plugin list. Packer will ensure these are installed.
 require('packer').startup(function(use)
+    -- Packer can manage itself
     use 'wbthomason/packer.nvim'
+
+    -- Color Scheme
     use 'sainnhe/gruvbox-material'
-    use 'neovim/nvim-lspconfig'
-    use 'Vimjas/vim-python-pep8-indent'
-    use 'mrcjkb/rustaceanvim'
-    use 'fatih/vim-go'
+
+    -- UI Enhancements
     use {
         'nvim-tree/nvim-tree.lua',
-        requires = 'nvim-tree/nvim-web-devicons'
+        requires = 'nvim-tree/nvim-web-devicons' -- For file icons
     }
     use 'nvim-lualine/lualine.nvim'
-    use 'lewis6991/gitsigns.nvim'
     use 'lukas-reineke/indent-blankline.nvim'
+
+    -- Fuzzy Finder for quickly finding files
     use {
       'nvim-telescope/telescope.nvim',
-      requires = { 'nvim-lua/plenary.nvim' }
+      requires = { 'nvim-lua/plenary.nvim' } -- A required utility library
     }
-    use 'j-hui/fidget.nvim'
+
+    -- Syntax Highlighting via Tree-sitter
     use {
-      'folke/trouble.nvim',
-      requires = 'nvim-tree/nvim-web-devicons'
+        'nvim-treesitter/nvim-treesitter',
+        run = ':TSUpdate' -- Command to install/update parsers
     }
 end)
 
--- ====================================================================================
---                            COLOR SCHEME SETUP
--- ====================================================================================
-
-vim.cmd([[if has("termguicolors") | set termguicolors | endif]])
-vim.cmd([[colorscheme gruvbox-material]])
-
-vim.g.gruvbox_material_background = 'medium'
-vim.g.gruvbox_material_enable_italic = 1
-vim.g.gruvbox_material_better_performance = 1
 
 -- ====================================================================================
 --                            PLUGIN CONFIGURATIONS
 -- ====================================================================================
 
+-- --- Color Scheme ---
+vim.g.gruvbox_material_background = 'medium'
+vim.g.gruvbox_material_enable_italic = 1
+vim.cmd([[colorscheme gruvbox-material]])
+
+
+-- --- File Browser (NvimTree) ---
 require('nvim-tree').setup({
     filters = {
-        dotfiles = false,
+        dotfiles = false, -- Hide dotfiles like .git, .DS_Store, etc.
     },
     view = {
-        width = 30,
+        width = 30, -- Set the width of the file browser window
     },
 })
 
+
+-- --- Status Line (Lualine) ---
 require('lualine').setup({
     options = {
         theme = 'gruvbox-material',
@@ -140,141 +123,67 @@ require('lualine').setup({
     }
 })
 
-require('gitsigns').setup()
 
+-- --- Indentation Guides ---
 require('ibl').setup({
     indent = {
-        char = '│',
+        char = '│', -- Use a subtle character for the guide
     },
-    scope = {
-        enabled = true,
-        show_start = true,
-    }
+    scope = { enabled = false }, -- Keep it simple, no scope highlighting
 })
 
-require("fidget").setup({})
 
-require("trouble").setup({
-  icons = false,
-  fold_open = "v",
-  fold_closed = ">",
-  signs = {
-    error = "E",
-    warning = "W",
-    hint = "H",
-    information = "I"
-  },
-})
+-- --- Syntax Highlighting (Tree-sitter) ---
+-- See: https://github.com/nvim-treesitter/nvim-treesitter
+require('nvim-treesitter.configs').setup {
+    -- A selection of parsers to install automatically. These cover the primary
+    -- file types used in this repository.
+    ensure_installed = { "yaml", "lua", "bash", "json", "go", "python" },
 
--- ====================================================================================
---                       LANGUAGE SERVER CONFIGURATION
--- ====================================================================================
--- Language servers are installed via system packages (apt/npm/go install)
--- during the install_nvim.sh script. This ensures fast, reliable, deterministic
--- installation suitable for cluster provisioning.
+    -- Automatically install parsers for new file types when you open them.
+    auto_install = true,
 
-vim.lsp.config('lua_ls', {})
-vim.lsp.config('gopls', {})
-vim.lsp.config('pyright', {})
-
-vim.lsp.config('yamlls', {
-    settings = {
-        yaml = {
-            schemas = {
-                ["https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.28.0-standalone-strict/all.json"] = "/*.yaml",
-            },
-        },
+    -- Enable the syntax highlighting module.
+    highlight = {
+        enable = true,
+        additional_vim_regex_highlighting = false,
     },
-})
-
--- Enable language servers
-vim.lsp.enable({'lua_ls', 'gopls', 'pyright', 'yamlls'})
-
--- ====================================================================================
---                         RUST CONFIGURATION (RUSTACEANVIM)
--- ====================================================================================
-
-vim.g.rustaceanvim = {
-    server = {
-        settings = {
-            ["rust-analyzer"] = {
-                checkOnSave = {
-                    command = "clippy",
-                },
-                cargo = {
-                    allFeatures = true,
-                },
-                procMacro = {
-                    enable = true,
-                },
-            },
-        },
+    -- Enable indentation based on Tree-sitter's understanding of the code structure.
+    indent = {
+        enable = true
     },
 }
 
--- ====================================================================================
---                          LSP KEYBINDINGS
--- ====================================================================================
+-- --- Fuzzy Finder (Telescope) ---
+-- No custom config needed; the default settings are excellent.
+require('telescope').setup()
 
-vim.api.nvim_create_autocmd('LspAttach', {
-  group = vim.api.nvim_create_augroup('UserLspConfig', {}),
-  callback = function(ev)
-    local opts = { buffer = ev.buf, noremap = true, silent = true }
-    
-    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-    vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
-    vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
-    vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, opts)
-    vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
-    vim.keymap.set('n', '<leader>f', function() 
-      vim.lsp.buf.format({ async = true }) 
-    end, opts)
-  end,
-})
 
 -- ====================================================================================
---                            GENERAL KEYBINDINGS
+--                                 KEYBINDINGS
 -- ====================================================================================
 
-vim.g.mapleader = " "
+vim.g.mapleader = " " -- Set the leader key to the Space bar
 
+-- Toggle the NvimTree file browser
 vim.api.nvim_set_keymap('n', '<C-n>', ':NvimTreeToggle<CR>', {noremap = true, silent = true})
-vim.api.nvim_set_keymap('n', '<leader>ff', ':Telescope find_files<CR>', {noremap = true})
-vim.api.nvim_set_keymap('n', '<leader>fg', ':Telescope live_grep<CR>', {noremap = true})
-vim.api.nvim_set_keymap('n', '<leader>fb', ':Telescope buffers<CR>', {noremap = true})
-vim.api.nvim_set_keymap('n', '<leader>fh', ':Telescope help_tags<CR>', {noremap = true})
-vim.api.nvim_set_keymap('n', '<leader>xx', ':TroubleToggle<CR>', {noremap = true})
+
+-- Telescope keybindings for finding things quickly
+vim.api.nvim_set_keymap('n', '<leader>ff', ':Telescope find_files<CR>', {noremap = true}) -- Find Files
+vim.api.nvim_set_keymap('n', '<leader>fg', ':Telescope live_grep<CR>', {noremap = true})  -- Find Text (grep)
+vim.api.nvim_set_keymap('n', '<leader>fb', ':Telescope buffers<CR>', {noremap = true})   -- Find in open buffers
+vim.api.nvim_set_keymap('n', '<leader>fh', ':Telescope help_tags<CR>', {noremap = true})  -- Search help docs
+
 
 -- ====================================================================================
---                         SPECIAL FILE TYPE MAPPINGS
+--                         GLOBAL FILETYPE CONFIGURATION
 -- ====================================================================================
 
-vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
-  pattern = { "*.ixx", "*.cppm", "*.mxx" },
-  callback = function()
-    vim.bo.filetype = "cpp"
-  end
-})
-
--- ====================================================================================
---                         PYTHON CONFIGURATION
--- ====================================================================================
-
-local is_mac = vim.fn.has('macunix') == 1
-local is_linux = vim.fn.has('unix') == 1 and vim.fn.has('macunix') == 0
-
-if is_mac then
-  vim.g.python3_host_prog = '/usr/local/bin/python3'
-elseif is_linux then
-  vim.g.python3_host_prog = '/usr/bin/python3'
-end
-
--- ====================================================================================
---                    FORCE 2-SPACE INDENTATION FOR ALL FILES
--- ====================================================================================
-
+-- This autocommand ensures that all files, regardless of type, use a consistent
+-- 2-space indentation. This is ideal for YAML and common practice for most
+-- other languages in this project.
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = "*",
+  pattern = "*", -- Match all file types
   callback = function()
     vim.bo.shiftwidth = 2
     vim.bo.tabstop = 2
