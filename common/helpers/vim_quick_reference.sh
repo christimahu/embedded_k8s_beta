@@ -234,7 +234,7 @@ cat << 'EOF'
      terminal and spend 20 minutes going through it.
 
 ╔════════════════════════════════════════════════════════════════════════════╗
-║  Remember: Vim has a learning curve, but it's worth it. Be patient with   ║
+║  Remember: Vim has a learning curve, but it's worth it. Be patient with    ║
 ║  yourself and practice regularly. Soon these commands will be muscle       ║
 ║  memory and you'll be editing faster than ever before.                     ║
 ╚════════════════════════════════════════════════════════════════════════════╝
