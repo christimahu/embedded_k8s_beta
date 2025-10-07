@@ -1,79 +1,233 @@
-# Helper and Utility Scripts
+#!/bin/bash
 
-This directory contains optional, quality-of-life scripts for installing useful command-line tools and developer utilities.
+# ====================================================================================
+#
+#               Install Kubernetes CLI Extras (install_k8s_extras.sh)
+#
+# ====================================================================================
+#
+#  Purpose:
+#  --------
+#  Installs a suite of highly-recommended, optional command-line tools that make
+#  managing and interacting with a Kubernetes cluster significantly easier and more
+#  efficient. These are considered "extras" or "helpers" for the human user.
+#
+#  Tutorial Goal:
+#  --------------
+#  This script explains the difference between the essential Kubernetes node
+#  binaries (`kubectl`, `kubelet`, `kubeadm`) and the rich ecosystem of third-party
+#  tools that enhance the administrator's workflow. The core binaries, which are
+#  required for a node to function, are installed by the scripts in `common/k8s/setup`.
+#  The tools installed here are not required for the cluster to run, but they are
+#  industry-standard utilities that save time, reduce errors, and provide much
+#  deeper insight into cluster operations.
+#
+#  What Gets Installed (The Admin "Extras" Toolkit):
+#  -------------------------------------------------
+#  1. jq: The essential command-line JSON processor for parsing `kubectl` output.
+#  2. yq: The `jq` equivalent for YAML, perfect for scripting changes to manifests.
+#  3. helm: The de facto package manager for Kubernetes.
+#  4. kubectx / kubens: Fast context and namespace switchers.
+#  5. k9s: A powerful, terminal-based UI for managing your cluster.
+#
+#  Philosophy:
+#  -----------
+#  While you can manage a cluster with `kubectl` alone, this toolkit represents
+#  the modern, efficient workflow adopted by Kubernetes administrators worldwide.
+#  Installing these extras dramatically improves the day-to-day experience of
+#  cluster management, making it faster, more intuitive, and more enjoyable.
+#
+# ====================================================================================
 
-These scripts are not required for the cluster to function but can significantly improve the experience of managing and developing on your Kubernetes cluster.
+# --- Helper Functions for Better Output ---
+readonly C_RESET='\033[0m'
+readonly C_RED='\033[0;31m'
+readonly C_GREEN='\033[0;32m'
+readonly C_YELLOW='\033[0;33m'
+readonly C_BLUE='\033[0;34m'
 
----
+print_success() {
+    echo -e "${C_GREEN}[OK] $1${C_RESET}"
+}
+print_error() {
+    echo -e "${C_RED}[ERROR] $1${C_RESET}"
+}
+print_info() {
+    echo -e "${C_YELLOW}[INFO] $1${C_RESET}"
+}
+print_border() {
+    echo ""
+    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+    echo " $1"
+    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
+}
 
-## Available Scripts
+# --- Initial Sanity Checks ---
 
-### **Generic Development Tools**
+print_border "Step 0: Pre-flight Checks"
 
-* **`install_neovim.sh`**:
-    Installs the Neovim text editor with a pre-configured setup optimized for editing Kubernetes configs and other text files. Provides a modern, terminal-based editing experience without heavy dependencies.
+if [ "$(id -u)" -ne 0 ]; then
+    print_error "This script must be run with root privileges. Please use 'sudo'."
+    exit 1
+fi
+print_success "Running as root."
 
-* **`vim_quick_reference.sh`**:
-    A quick reference guide for Vim/Neovim commands. Run this anytime you forget a keybinding or need to look up common operations.
+if [ -n "$SUDO_USER" ]; then
+    TARGET_USER="$SUDO_USER"
+else
+    print_error "Could not determine the target user. Please run with 'sudo'."
+    exit 1
+fi
+TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+print_success "Will install tools for user: $TARGET_USER"
 
----
+# Verify kubectl is installed (it's a prerequisite from the core setup)
+if ! command -v kubectl &> /dev/null; then
+    print_error "kubectl is not installed. Please run the core k8s setup scripts first."
+    print_error "Location: common/k8s/setup/02_install_kube.sh"
+    exit 1
+fi
+print_success "kubectl is installed."
 
-### **Kubernetes Extras**
+# --- Part 1: Install jq (JSON Processor) ---
 
-* **`install_k8s_extras.sh`**:
-    Installs a suite of stable, production-ready CLI tools for enhancing Kubernetes operations. These are the standard tools used by k8s administrators and developers worldwide to improve workflow efficiency.
-    - **jq** - JSON processor for parsing kubectl output
-    - **yq** - YAML processor for editing k8s configs
-    - **helm** - Kubernetes package manager
-    - **kubectx** - Fast context switching between clusters
-    - **kubens** - Fast namespace switching
-    - **k9s** - A powerful terminal UI for managing Kubernetes
+print_border "Step 1: Installing jq (JSON Processor)"
 
----
+# --- Tutorial: Why jq? ---
+# Kubernetes heavily uses JSON. 'kubectl get pods -o json' produces a massive JSON
+# blob. jq is a lightweight tool that lets you parse, filter, and format that JSON
+# directly on the command line, making it essential for scripting and automation.
+# ---
 
-### **AI-Powered Kubernetes Tools**
+print_info "Installing jq from Ubuntu repositories..."
+apt-get update
+apt-get install -y jq
 
-* **`install_k8s_ai.sh`**:
-    Installs AI-native tools that use large language models to enhance Kubernetes operations, from natural language `kubectl` commands to AI-powered diagnostics.
-    
-    These tools represent the cutting edge of AI-assisted infrastructure management and align with this repo's AI-native philosophy.
+if ! command -v jq &> /dev/null; then
+    print_error "Failed to install jq."
+    exit 1
+fi
 
----
+JQ_VERSION=$(jq --version)
+print_success "jq installed: $JQ_VERSION"
 
-### **Chaos Engineering**
+# --- Part 2: Install yq (YAML Processor) ---
 
-* **`install_chaos_engineering.sh`**:
-    Installs Chaos Mesh, a CNCF chaos engineering platform for Kubernetes. Chaos engineering is the practice of intentionally injecting failures to test system resilience. Essential for learning how distributed systems behave under failure conditions.
+print_border "Step 2: Installing yq (YAML Processor)"
 
----
+# --- Tutorial: Why yq? ---
+# Kubernetes configurations are written in YAML. yq brings the same power of jq
+# to YAML files, allowing you to programmatically edit Kubernetes manifests,
+# extract values from Helm charts, or merge configurations in your scripts.
+# ---
 
-## Installation Order
+print_info "Installing yq from GitHub releases..."
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) YQ_ARCH="amd64" ;;
+    aarch64|arm64) YQ_ARCH="arm64" ;;
+    *) print_error "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+YQ_VERSION="v4.40.5"
+YQ_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}"
+curl -L "$YQ_URL" -o /usr/local/bin/yq
+chmod +x /usr/local/bin/yq
+if ! command -v yq &> /dev/null; then
+    print_error "Failed to install yq."
+    exit 1
+fi
+print_success "yq installed: $(yq --version)"
 
-You can install these scripts in any order, but the recommended sequence respects their dependencies:
+# --- Part 3: Install Helm (Package Manager) ---
 
-1.  **`install_neovim.sh`** - Set up your text editor first for editing configs.
-2.  **`install_k8s_extras.sh`** - Install the foundational admin tools. **This is a prerequisite for `install_chaos_engineering.sh`** because it installs Helm.
-3.  **`install_k8s_ai.sh`** - Optional: Add AI-powered tools.
-4.  **`install_chaos_engineering.sh`** - Optional: Set up the chaos engineering platform.
+print_border "Step 3: Installing Helm (Kubernetes Package Manager)"
 
----
+# --- Tutorial: Why Helm? ---
+# Helm is the 'apt' or 'homebrew' for Kubernetes. It allows you to install complex
+# applications from pre-packaged templates called "charts," instead of managing
+# dozens of interconnected YAML files manually. It's the standard for deploying
+# applications on Kubernetes.
+# ---
 
-## Philosophy
+print_info "Installing Helm using official installer..."
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+if ! command -v helm &> /dev/null; then
+    print_error "Failed to install Helm."
+    exit 1
+fi
+HELM_VERSION=$(helm version --short)
+print_success "Helm installed: $HELM_VERSION"
+print_info "Adding common Helm chart repositories..."
+sudo -u "$TARGET_USER" helm repo add stable https://charts.helm.sh/stable 2>/dev/null || true
+sudo -u "$TARGET_USER" helm repo add bitnami https://charts.bitnami.com/bitnami 2>/dev/null || true
+sudo -u "$TARGET_USER" helm repo update
+print_success "Helm repositories configured."
 
-This repo encourages hands-on learning and experimentation with modern cloud-native workflows. The tools in this directory support that goal by:
+# --- Part 4: Install kubectx and kubens (Context/Namespace Switchers) ---
 
-- **Reducing friction** - Good tooling makes experimentation faster and more enjoyable
-- **Teaching best practices** - These are industry-standard tools used in production
-- **Enabling AI-native workflows** - Embrace AI assistants as first-class tools
-- **Building resilience** - Chaos engineering teaches failure modes through practice
+print_border "Step 4: Installing kubectx and kubens"
 
-All scripts follow a tutorial-style documentation approach, explaining not just *how* to use the tools, but *why* they exist and when to use them.
+# --- Tutorial: Why kubectx and kubens? ---
+# These are simple but powerful quality-of-life tools. They reduce the verbose
+# kubectl commands for switching between different clusters (`kubectx`) and
+# namespaces (`kubens`) to a single, memorable command.
+# ---
 
----
+print_info "Installing kubectx and kubens from GitHub..."
+curl -L "https://raw.githubusercontent.com/ahmetb/kubectx/master/kubectx" -o /usr/local/bin/kubectx
+chmod +x /usr/local/bin/kubectx
+curl -L "https://raw.githubusercontent.com/ahmetb/kubectx/master/kubens" -o /usr/local/bin/kubens
+chmod +x /usr/local/bin/kubens
+if ! command -v kubectx &> /dev/null || ! command -v kubens &> /dev/null; then
+    print_error "Failed to install kubectx/kubens."
+    exit 1
+fi
+print_success "kubectx and kubens installed."
 
-## Notes
+# --- Part 5: Install k9s (Terminal UI) ---
 
-- All scripts must be run with `sudo`
-- Scripts are idempotent - safe to run multiple times
-- Each script includes extensive comments explaining concepts and usage
-- Tools are installed for the user who invoked `sudo`, not for root
+print_border "Step 5: Installing k9s (Terminal UI for Kubernetes)"
+
+# --- Tutorial: Why k9s? ---
+# k9s is a terminal-based UI that provides a real-time, interactive view of your
+# cluster. It's like 'htop' for Kubernetes, allowing you to navigate resources,
+# view logs, exec into containers, and manage the cluster much faster than by
+# repeatedly typing kubectl commands.
+# ---
+
+print_info "Installing k9s from GitHub releases..."
+case $ARCH in
+    x86_64) K9S_ARCH="amd64" ;;
+    aarch64|arm64) K9S_ARCH="arm64" ;;
+    *) print_error "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+K9S_VERSION="v0.31.7"
+K9S_URL="https://github.com/derailed/k9s/releases/download/${K9S_VERSION}/k9s_Linux_${K9S_ARCH}.tar.gz"
+curl -L "$K9S_URL" -o /tmp/k9s.tar.gz
+tar -xzf /tmp/k9s.tar.gz -C /tmp
+mv /tmp/k9s /usr/local/bin/
+chmod +x /usr/local/bin/k9s
+rm /tmp/k9s.tar.gz
+if ! command -v k9s &> /dev/null; then
+    print_error "Failed to install k9s."
+    exit 1
+fi
+print_success "k9s installed: $(k9s version --short)"
+
+# --- Final Instructions ---
+
+print_border "Installation Complete"
+echo ""
+echo -e "${C_GREEN}All Kubernetes CLI extras successfully installed!${C_RESET}"
+echo ""
+echo -e "${C_BLUE}Installed Tools:${C_RESET}"
+echo "  ✓ jq       - JSON processor"
+echo "  ✓ yq       - YAML processor"
+echo "  ✓ helm     - Package manager"
+echo "  ✓ kubectx  - Context switcher"
+echo "  ✓ kubens   - Namespace switcher"
+echo "  ✓ k9s      - Terminal UI"
+echo ""
+echo -e "${C_YELLOW}To start exploring your cluster, just run:${C_RESET}"
+echo "  k9s"
+echo ""
