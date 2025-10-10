@@ -21,6 +21,13 @@
 #  trust an "insecure" HTTP registry, a common requirement for local and
 #  air-gapped development environments.
 #
+#  HTTP vs HTTPS:
+#  --------------
+#  This script installs the registry with HTTP by default for simplicity.
+#  For production use, you should enable TLS:
+#  1. Generate certificates: etc/tls/generate_cert.sh
+#  2. Enable TLS: etc/tls/enable_registry_tls.sh
+#
 #  Prerequisites:
 #  --------------
 #  - Completed: Base OS setup on the node that will host the registry.
@@ -35,7 +42,7 @@
 #
 # ============================================================================
 
-readonly SCRIPT_VERSION="1.0.0"
+readonly SCRIPT_VERSION="1.1.0"
 readonly LAST_UPDATED="2025-10-10"
 readonly TESTED_ON="Ubuntu 20.04"
 
@@ -75,25 +82,11 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 print_success "Running as root."
 
-if ! command -v docker &> /dev/null; then
-    print_info "Docker not found. Installing now..."
-    sudo apt-get update
-    sudo apt-get install -y docker.io
-    sudo systemctl enable --now docker
-    print_success "Docker installed and started."
-else
-    print_success "Docker is already installed."
-fi
-
 # ============================================================================
 #                   STEP 1: RUN THE DOCKER REGISTRY CONTAINER
 # ============================================================================
 
 print_border "Step 1: Run the Docker Registry Container"
-
-readonly REGISTRY_NAME="local-registry"
-readonly REGISTRY_PORT="5000"
-readonly REGISTRY_STORAGE_PATH="/var/lib/docker-registry"
 
 # --- Tutorial: Docker Registry Container ---
 # We use the official `registry:2` image, which is lightweight and secure.
@@ -102,10 +95,15 @@ readonly REGISTRY_STORAGE_PATH="/var/lib/docker-registry"
 # `-p`: Maps port 5000 on the host to port 5000 in the container.
 # `-v`: Mounts a host directory into the container for persistent image storage.
 # ---
-if [ "$(docker ps -q -f name=^/${REGISTRY_NAME}$)" ]; then
-    print_success "Registry container '$REGISTRY_NAME' is already running."
+if [ "$(docker ps -q -f name=^/local-registry$)" ]; then
+    print_success "Registry container 'local-registry' is already running."
 else
     print_info "Starting Docker registry container..."
+    
+    readonly REGISTRY_NAME="local-registry"
+    readonly REGISTRY_PORT="5000"
+    readonly REGISTRY_STORAGE_PATH="/var/lib/docker-registry"
+    
     print_info "  - Name: $REGISTRY_NAME"
     print_info "  - Port: $REGISTRY_PORT"
     print_info "  - Storage: $REGISTRY_STORAGE_PATH"
@@ -129,16 +127,41 @@ print_border "Setup Complete"
 print_success "Your local Docker registry is running!"
 
 readonly HOST_IP=$(hostname -I | awk '{print $1}')
-readonly REGISTRY_ADDRESS="${HOST_IP}:${REGISTRY_PORT}"
+readonly REGISTRY_ADDRESS="${HOST_IP}:5000"
+
 echo ""
-print_warning "ACTION REQUIRED: You must configure all client nodes to trust this registry."
+print_warning "SECURITY NOTICE: Registry is running over HTTP (insecure)"
+echo ""
+echo "Current configuration:"
+echo "  Protocol: HTTP (unencrypted)"
+echo "  Address:  http://${REGISTRY_ADDRESS}"
+echo ""
+echo "For production use, enable TLS:"
+echo ""
+echo "1. Generate CA and certificates:"
+echo "   cd embedded_k8s/etc/tls"
+echo "   sudo ./generate_ca.sh"
+echo "   sudo ./generate_cert.sh --service registry --hostname registry.local --ip ${HOST_IP}"
+echo ""
+echo "2. Enable TLS on registry:"
+echo "   sudo ./enable_registry_tls.sh"
+echo ""
+echo "3. Trust CA on all cluster nodes:"
+echo "   sudo ./trust_ca_on_nodes.sh"
+echo ""
+echo "============================================================================"
+print_warning "ACTION REQUIRED: Configure all Docker clients to trust this registry"
+echo ""
+echo "Until you enable TLS, you must configure each node's Docker daemon"
+echo "to accept insecure connections:"
 echo ""
 echo "On EACH Kubernetes node (and your local machine), do the following:"
+echo ""
 echo "1. Edit the Docker daemon configuration file:"
 echo "   sudo nano /etc/docker/daemon.json"
 echo ""
 echo "2. Add the following content. If the file has other content, just add the"
-echo "   'insecure-registries' key."
+echo "   'insecure-registries' key:"
 echo "   {"
 echo "     \"insecure-registries\": [\"${REGISTRY_ADDRESS}\"]"
 echo "   }"
@@ -146,10 +169,28 @@ echo ""
 echo "3. Restart the Docker daemon on that node:"
 echo "   sudo systemctl restart docker"
 echo ""
-echo "----------------------------------------------------------------------------"
+echo "4. If using containerd (Kubernetes), also restart it:"
+echo "   sudo systemctl restart containerd"
+echo ""
+echo "============================================================================"
 echo "Usage Example:"
+echo "============================================================================"
+echo ""
 echo "1. Pull an image:      docker pull alpine"
 echo "2. Tag for local repo: docker tag alpine ${REGISTRY_ADDRESS}/my-alpine"
 echo "3. Push to local repo: docker push ${REGISTRY_ADDRESS}/my-alpine"
 echo "4. Use in Kubernetes:  image: ${REGISTRY_ADDRESS}/my-alpine"
-echo "----------------------------------------------------------------------------"
+echo ""
+echo "Test connection:"
+echo "  curl http://${REGISTRY_ADDRESS}/v2/_catalog"
+echo ""
+echo "View registry logs:"
+echo "  docker logs local-registry"
+echo ""
+echo "Stop registry:"
+echo "  docker stop local-registry"
+echo ""
+echo "Start registry:"
+echo "  docker start local-registry"
+echo ""
+echo "============================================================================"
