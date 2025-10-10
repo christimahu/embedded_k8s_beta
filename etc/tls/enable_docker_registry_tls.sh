@@ -2,7 +2,7 @@
 
 # ============================================================================
 #
-#          Enable TLS on Docker Registry (enable_registry_tls.sh)
+#      Enable TLS on Docker Registry (enable_docker_registry_tls.sh)
 #
 # ============================================================================
 #
@@ -35,8 +35,8 @@
 #  Prerequisites:
 #  --------------
 #  - Completed: etc/install_docker_registry.sh (registry must be running)
-#  - Completed: etc/tls/generate_cert.sh --service registry ...
-#  - Files: registry.crt and registry.key must exist in etc/tls/
+#  - Completed: etc/tls/generate_cert.sh --service docker-registry ...
+#  - Files: docker-registry.crt and docker-registry.key must exist in etc/tls/
 #  - Time: ~2 minutes
 #
 #  Workflow:
@@ -94,8 +94,8 @@ fi
 print_success "Docker is installed."
 
 # Check if registry container exists
-if ! docker ps -a --format '{{.Names}}' | grep -q '^local-registry$'; then
-    print_error "Docker registry container 'local-registry' not found."
+if ! docker ps -a --format '{{.Names}}' | grep -q '^docker-registry$'; then
+    print_error "Docker registry container 'docker-registry' not found."
     echo ""
     echo "Please install the registry first:"
     echo "  cd embedded_k8s/etc"
@@ -106,10 +106,10 @@ print_success "Docker registry container found."
 
 # Determine where the TLS directory is
 # The script could be run from etc/ or etc/tls/
-if [ -f "registry.crt" ] && [ -f "registry.key" ]; then
+if [ -f "docker-registry.crt" ] && [ -f "docker-registry.key" ]; then
     # Running from etc/tls/
     readonly TLS_DIR="$(pwd)"
-elif [ -f "tls/registry.crt" ] && [ -f "tls/registry.key" ]; then
+elif [ -f "tls/docker-registry.crt" ] && [ -f "tls/docker-registry.key" ]; then
     # Running from etc/
     readonly TLS_DIR="$(pwd)/tls"
 else
@@ -117,11 +117,11 @@ else
     echo ""
     echo "Please generate a certificate for the registry first:"
     echo "  cd embedded_k8s/etc/tls"
-    echo "  sudo ./generate_cert.sh --service registry --hostname registry.local --ip <registry-ip>"
+    echo "  sudo ./generate_cert.sh --service docker-registry --hostname registry.local --ip <registry-ip>"
     echo ""
     echo "Expected files:"
-    echo "  - registry.crt (certificate)"
-    echo "  - registry.key (private key)"
+    echo "  - docker-registry.crt (certificate)"
+    echo "  - docker-registry.key (private key)"
     exit 1
 fi
 
@@ -135,8 +135,8 @@ print_border "Step 1: Stopping Existing Registry"
 
 print_info "Stopping registry container..."
 
-if docker ps --format '{{.Names}}' | grep -q '^local-registry$'; then
-    docker stop local-registry
+if docker ps --format '{{.Names}}' | grep -q '^docker-registry$'; then
+    docker stop docker-registry
     print_success "Registry stopped."
 else
     print_info "Registry was not running."
@@ -163,8 +163,8 @@ mkdir -p "$CERTS_DIR"
 chmod 755 "$CERTS_DIR"
 
 print_info "Copying certificates to $CERTS_DIR..."
-cp "$TLS_DIR/registry.crt" "$CERTS_DIR/domain.crt"
-cp "$TLS_DIR/registry.key" "$CERTS_DIR/domain.key"
+cp "$TLS_DIR/docker-registry.crt" "$CERTS_DIR/domain.crt"
+cp "$TLS_DIR/docker-registry.key" "$CERTS_DIR/domain.key"
 
 # Set appropriate permissions
 chmod 644 "$CERTS_DIR/domain.crt"
@@ -189,7 +189,7 @@ print_border "Step 3: Reconfiguring Registry for HTTPS"
 # ---
 
 print_info "Removing old registry container..."
-docker rm local-registry
+docker rm docker-registry
 
 print_info "Starting registry with TLS enabled..."
 
@@ -197,7 +197,7 @@ readonly REGISTRY_PORT="5000"
 readonly REGISTRY_STORAGE="/var/lib/docker-registry"
 
 docker run -d \
-  --name local-registry \
+  --name docker-registry \
   --restart=always \
   -p "${REGISTRY_PORT}:${REGISTRY_PORT}" \
   -v "${REGISTRY_STORAGE}:/var/lib/registry" \
@@ -223,13 +223,13 @@ print_info "Waiting for registry to start (5 seconds)..."
 sleep 5
 
 # Check if container is running
-if docker ps --format '{{.Names}}' | grep -q '^local-registry$'; then
+if docker ps --format '{{.Names}}' | grep -q '^docker-registry$'; then
     print_success "Registry container is running."
 else
     print_error "Registry container failed to start."
     echo ""
     echo "Check logs with:"
-    echo "  docker logs local-registry"
+    echo "  docker logs docker-registry"
     exit 1
 fi
 
@@ -316,7 +316,7 @@ echo "  - Regenerate certificate with correct hostname/IP"
 echo "  - Run this script again"
 echo ""
 echo "View registry logs:"
-echo "  docker logs local-registry"
+echo "  docker logs docker-registry"
 echo ""
 echo "Check certificate details:"
 echo "  openssl x509 -in $CERTS_DIR/domain.crt -noout -text"

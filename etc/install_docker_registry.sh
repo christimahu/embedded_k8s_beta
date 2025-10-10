@@ -2,7 +2,7 @@
 
 # ============================================================================
 #
-#           Install Local Docker Registry (install_docker_registry.sh)
+#           Install Docker Registry (install_docker_registry.sh)
 #
 # ============================================================================
 #
@@ -26,7 +26,7 @@
 #  This script installs the registry with HTTP by default for simplicity.
 #  For production use, you should enable TLS:
 #  1. Generate certificates: etc/tls/generate_cert.sh
-#  2. Enable TLS: etc/tls/enable_registry_tls.sh
+#  2. Enable TLS: etc/tls/enable_docker_registry_tls.sh
 #
 #  Prerequisites:
 #  --------------
@@ -95,12 +95,12 @@ print_border "Step 1: Run the Docker Registry Container"
 # `-p`: Maps port 5000 on the host to port 5000 in the container.
 # `-v`: Mounts a host directory into the container for persistent image storage.
 # ---
-if [ "$(docker ps -q -f name=^/local-registry$)" ]; then
-    print_success "Registry container 'local-registry' is already running."
+if [ "$(docker ps -q -f name=^/docker-registry$)" ]; then
+    print_success "Registry container 'docker-registry' is already running."
 else
     print_info "Starting Docker registry container..."
     
-    readonly REGISTRY_NAME="local-registry"
+    readonly REGISTRY_NAME="docker-registry"
     readonly REGISTRY_PORT="5000"
     readonly REGISTRY_STORAGE_PATH="/var/lib/docker-registry"
     
@@ -124,7 +124,7 @@ fi
 # ============================================================================
 
 print_border "Setup Complete"
-print_success "Your local Docker registry is running!"
+print_success "Your Docker registry is running!"
 
 readonly HOST_IP=$(hostname -I | awk '{print $1}')
 readonly REGISTRY_ADDRESS="${HOST_IP}:5000"
@@ -141,10 +141,10 @@ echo ""
 echo "1. Generate CA and certificates:"
 echo "   cd embedded_k8s/etc/tls"
 echo "   sudo ./generate_ca.sh"
-echo "   sudo ./generate_cert.sh --service registry --hostname registry.local --ip ${HOST_IP}"
+echo "   sudo ./generate_cert.sh --service docker-registry --hostname registry.local --ip ${HOST_IP}"
 echo ""
 echo "2. Enable TLS on registry:"
-echo "   sudo ./enable_registry_tls.sh"
+echo "   sudo ./enable_docker_registry_tls.sh"
 echo ""
 echo "3. Trust CA on all cluster nodes:"
 echo "   sudo ./trust_ca_on_nodes.sh"
@@ -185,12 +185,12 @@ echo "Test connection:"
 echo "  curl http://${REGISTRY_ADDRESS}/v2/_catalog"
 echo ""
 echo "View registry logs:"
-echo "  docker logs local-registry"
+echo "  docker logs docker-registry"
 echo ""
 echo "Stop registry:"
-echo "  docker stop local-registry"
+echo "  docker stop docker-registry"
 echo ""
 echo "Start registry:"
-echo "  docker start local-registry"
+echo "  docker start docker-registry"
 echo ""
 echo "============================================================================"

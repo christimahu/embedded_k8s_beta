@@ -19,6 +19,13 @@
 #  approach demonstrates a declarative, repeatable, and isolated way to manage
 #  application stacks, which is a core concept in modern DevOps.
 #
+#  HTTP vs HTTPS:
+#  --------------
+#  This script installs Gitea with HTTP by default for simplicity.
+#  For production use, you should enable TLS:
+#  1. Generate certificates: etc/tls/generate_cert.sh
+#  2. Enable TLS: etc/tls/enable_gitea_tls.sh
+#
 #  Prerequisites:
 #  --------------
 #  - Completed: Base OS setup on the node that will host Gitea.
@@ -33,7 +40,7 @@
 #
 # ============================================================================
 
-readonly SCRIPT_VERSION="1.0.0"
+readonly SCRIPT_VERSION="1.1.0"
 readonly LAST_UPDATED="2025-10-10"
 readonly TESTED_ON="Ubuntu 20.04"
 
@@ -191,7 +198,27 @@ print_success "Gitea is running!"
 
 readonly HOST_IP=$(hostname -I | awk '{print $1}')
 echo ""
-print_warning "ACTION REQUIRED: Complete the Gitea setup in your web browser."
+print_warning "SECURITY NOTICE: Gitea is running over HTTP (insecure)"
+echo ""
+echo "Current configuration:"
+echo "  Protocol: HTTP (unencrypted)"
+echo "  Address:  http://${HOST_IP}:3000"
+echo ""
+echo "For production use, enable TLS:"
+echo ""
+echo "1. Generate CA and certificates:"
+echo "   cd embedded_k8s/etc/tls"
+echo "   sudo ./generate_ca.sh"
+echo "   sudo ./generate_cert.sh --service gitea --hostname git.local --ip ${HOST_IP}"
+echo ""
+echo "2. Enable TLS on Gitea:"
+echo "   sudo ./enable_gitea_tls.sh"
+echo ""
+echo "3. Trust CA on all cluster nodes:"
+echo "   sudo ./trust_ca_on_nodes.sh"
+echo ""
+echo "============================================================================"
+print_warning "ACTION REQUIRED: Complete the Gitea setup in your web browser"
 echo ""
 echo "1. Open your web browser and navigate to:"
 echo "   http://${HOST_IP}:3000"
@@ -205,3 +232,37 @@ echo "   - Gitea Base URL:      http://${HOST_IP}:3000/"
 echo ""
 echo "3. Complete the rest of the form to create your admin account."
 echo "4. Click 'Install Gitea'."
+echo ""
+echo "============================================================================"
+echo "SSH Git Access:"
+echo "============================================================================"
+echo ""
+echo "Gitea is configured to accept Git operations over SSH on port 222:"
+echo ""
+echo "Clone a repository:"
+echo "  git clone ssh://git@${HOST_IP}:222/username/repository.git"
+echo ""
+echo "Add Gitea as a remote:"
+echo "  git remote add origin ssh://git@${HOST_IP}:222/username/repository.git"
+echo ""
+echo "============================================================================"
+echo "Managing Gitea:"
+echo "============================================================================"
+echo ""
+echo "View logs:"
+echo "  cd ${GITEA_BASE_PATH}"
+echo "  docker-compose logs -f gitea"
+echo ""
+echo "Stop Gitea:"
+echo "  cd ${GITEA_BASE_PATH}"
+echo "  docker-compose stop"
+echo ""
+echo "Start Gitea:"
+echo "  cd ${GITEA_BASE_PATH}"
+echo "  docker-compose start"
+echo ""
+echo "Restart Gitea:"
+echo "  cd ${GITEA_BASE_PATH}"
+echo "  docker-compose restart"
+echo ""
+echo "============================================================================"

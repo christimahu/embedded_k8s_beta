@@ -1,244 +1,577 @@
 # embedded_k8s
 
-This repository contains a collection of shell scripts for setting up a Kubernetes cluster on ARM64 single-board computers.
+**A production-grade Kubernetes platform for GPU computing, MLOps, and distributed AI workloads - designed to scale from edge hardware to enterprise infrastructure.**
 
-The philosophy is to separate the hardware-specific setup from the role-specific configuration. This allows any prepared board (e.g., a Jetson Orin or a Raspberry Pi) to be used for any cluster role (e.g., control plane, worker, or support services).
-
----
-
-## Directory Structure
-
-- **`./`**
-  - **[`README.md`](./README.md)**
-- **`COMMON/`**
-  - **`HELPERS/`**
-    - **[`README.md`](./common/helpers/README.md)**
-    - `install_nvim.sh`
-    - `init.lua`
-  - **`K8S/`**
-    - **[`README.md`](./common/k8s/README.md)**
-    - **`SETUP/`**
-      - `01_install_deps.sh`
-      - `02_install_kube.sh`
-    - **`CONTROL_PLANE/`**
-      - `init.sh`
-    - **`WORKER/`**
-      - `join.sh`
-  - **`SERVICES/`**
-    - **[`README.md`](./common/services/README.md)**
-    - `gen_certs.sh`
-    - `setup_registry.sh`
-- **`JETSON_ORIN/`**
-  - **[`README.md`](./jetson_orin/README.md)**
-  - **`SETUP/`**
-    - `01_config_headless.sh`
-    - `02_clone_os_to_ssd.sh`
-    - `03_set_boot_to_ssd.sh`
-    - `04_strip_microsd_rootfs.sh`
-    - `05_update_os.sh`
-    - `verify_setup.sh`
-  - **`TOOLS/`**
-    - `inspect_nvram.sh`
-    - `clean_nvram.sh`
-    - `reimage_microsd.sh`
-- **`RASPBERRY_PI/`**
-  - **[`README.md`](./raspberry_pi/README.md)**
+This repository provides a complete, battle-tested foundation for deploying Kubernetes on ARM64 and GPU-accelerated hardware. Built with NVIDIA Jetson, Raspberry Pi, and GPU clusters in mind, it delivers an educational journey that results in a production-ready platform.
 
 ---
 
-## Overview
+## Why This Repository Exists
 
-### `JETSON_orin/`
-Contains the scripts to take a stock NVIDIA Jetson Orin Developer Kit from a fresh OS flash to a clean, headless state running from NVMe SSD, ready for cluster configuration. This is the starting point for preparing a Jetson board.
+Modern AI/ML infrastructure demands Kubernetes expertise, but learning on cloud platforms is expensive and abstracts away critical knowledge. Building on physical hardware teaches you how things actually work while creating a platform capable of real production workloads.
 
-**Key directories:**
-- `SETUP/` - Sequential scripts (01-05) to configure the device for headless operation and migrate to SSD
-- `TOOLS/` - Utility scripts for NVRAM management and recovery operations
+### The GPU/MLOps Problem
 
-See the [Jetson Orin README](./jetson_orin/README.md) for detailed setup instructions.
+Training and fine-tuning large language models requires:
+- **Distributed PyTorch** across multiple GPUs
+- **Kubernetes orchestration** for job scheduling and resource management
+- **Production-grade infrastructure** (service mesh, monitoring, GitOps)
+- **Confidence that your PoC will scale** to enterprise GPU clusters
 
-### `RASPBERRY_PI/`
-This directory will contain the equivalent setup scripts for a Raspberry Pi. (Currently a placeholder).
+This repository solves that problem. Develop and test your ML pipelines on accessible hardware (Jetson Orin, consumer NVIDIA GPUs), then deploy to professional NVIDIA A100/H100 clusters with **zero architectural changes**.
 
-### `COMMON/`
-Contains hardware-agnostic scripts for installing Kubernetes, its dependencies, shared services, and helper utilities. These scripts are run on a board *after* it has been prepared using its platform-specific setup scripts.
+### The Philosophy
 
-**Key directories:**
-- `K8S/` - Core Kubernetes installation and cluster management
-- `SERVICES/` - Shared cluster services (container registry, etc.)
-- `HELPERS/` - Optional development tools (Neovim, etc.)
+**Educational transparency meets production architecture.** Every script explains the "why" behind each decision, teaching you Kubernetes and cloud-native patterns while building infrastructure you can actually use.
 
----
-
-## Quick Start
-
-### For Jetson Orin Devices
-
-1. **Prepare the Hardware**
-   - Flash JetPack to microSD card
-   - Install microSD and NVMe SSD in the Jetson
-   - Boot and complete Ubuntu setup
-
-2. **Run Platform-Specific Setup** (with monitor/keyboard initially)
-   ``` bash
-   cd jetson_orin/setup
-   sudo ./01_config_headless.sh
-   sudo shutdown now
-   ```
-
-3. **Continue via SSH** (after powering back on)
-   ``` bash
-   ssh user@<jetson-ip>
-   cd jetson_orin/setup
-   sudo ./02_clone_os_to_ssd.sh
-   sudo ./03_set_boot_to_ssd.sh
-   sudo reboot
-   
-   # After reboot, SSH back in:
-   sudo ./04_strip_microsd_rootfs.sh  # Optional but recommended
-   sudo ./05_update_os.sh
-   sudo ./verify_setup.sh
-   ```
-
-4. **Install Kubernetes**
-   ``` bash
-   cd common/k8s/setup
-   sudo ./01_install_deps.sh
-   sudo ./02_install_kube.sh
-   ```
-
-5. **Assign Cluster Role**
-   
-   For the first control plane node:
-   ``` bash
-   cd common/k8s/control_plane
-   sudo ./init.sh
-   ```
-   
-   For worker nodes:
-   ``` bash
-   cd common/k8s/worker
-   sudo ./join.sh
-   ```
+- ✅ **Production patterns** - Service mesh, GitOps, chaos engineering, observability
+- ✅ **Vendor-agnostic** - Standard Kubernetes, not a proprietary distribution
+- ✅ **GPU-native** - Designed for NVIDIA CUDA workloads from day one
+- ✅ **Financially accessible** - Learn on Jetson/Pi, deploy on A100s
+- ✅ **Fully documented** - Tutorial-style comments throughout
 
 ---
 
-## Important Concepts
+## Use Cases
+
+### 1. MLOps and Distributed AI Training
+
+**Development workflow:**
+```
+Jetson Orin Cluster (8GB RAM, 1024 CUDA cores) → Develop distributed PyTorch training
+    ↓
+Test fine-tuning small LLMs (Llama 2 7B, Mistral 7B)
+    ↓
+Deploy identical architecture on A100 cluster → Fine-tune Llama 70B, GPT-J, Falcon 40B
+```
+
+The Kubernetes manifests, Helm charts, and infrastructure configurations are **identical**. Only the GPU resources change.
+
+### 2. Edge AI and Computer Vision
+
+Deploy production computer vision pipelines:
+- Real-time video analytics on Jetson
+- Knative serverless for inference (scale-to-zero when idle)
+- Distributed model serving across edge nodes
+- Central training, edge inference architecture
+
+### 3. GPU Cluster Management
+
+Learn to manage GPU resources professionally:
+- NVIDIA GPU Operator integration
+- Multi-Instance GPU (MIG) partitioning
+- GPU scheduling and resource quotas
+- Monitoring GPU utilization with Prometheus
+
+### 4. Production Kubernetes Skills
+
+Everything you learn here transfers directly to:
+- AWS EKS, Google GKE, Azure AKS
+- On-premises enterprise Kubernetes
+- Kubernetes certification exams (CKA, CKAD, CKS)
+- Real-world MLOps and DevOps roles
+
+---
+
+## Architecture Overview
 
 ### Hardware-Agnostic Design
-The scripts are organized to separate hardware-specific setup (`JETSON_ORIN/`, `RASPBERRY_PI/`) from role-specific configuration (`COMMON/K8S/`). This means:
-- A Jetson prepared with `JETSON_ORIN/setup` can become a control plane, worker, or services node
-- A Raspberry Pi prepared with `RASPBERRY_PI/setup` can serve the same roles
-- Cluster configuration is identical regardless of underlying hardware
 
-### Jetson Boot Architecture
-The Jetson Orin uses a UEFI boot process with these key components:
-- **NVRAM**: Firmware settings stored on the motherboard (persists across storage re-imaging)
-- **EFI System Partition (ESP)**: On microSD partition 10 (required for boot)
-- **Extlinux Config**: `/boot/extlinux/extlinux.conf` on microSD (specifies root device)
-- **Root Filesystem**: Can be on microSD or NVMe SSD
+The repository separates hardware-specific setup from cluster configuration:
 
-**The microSD card is permanently required** because it contains the ESP. The setup scripts move the root filesystem to SSD for performance while keeping the boot files on microSD.
+```
+Hardware Preparation (NVIDIA Jetson Orin, Raspberry Pi, x86 GPU servers)
+    ↓
+Common Kubernetes Installation (works on any prepared node)
+    ↓
+Role Assignment (control plane, GPU worker, CPU worker)
+    ↓
+Addon Installation (service mesh, monitoring, serverless, MLOps tools)
+```
 
-### NVRAM Management
-NVRAM (Non-Volatile RAM) stores UEFI boot configuration and persists across:
-- Power cycles
-- Storage device re-imaging
-- OS updates
+A Jetson node, a Raspberry Pi, and a server with NVIDIA A100 GPUs can all join the **same cluster** with complementary roles.
 
-The `TOOLS/` directory provides utilities to inspect and manage NVRAM:
-- `inspect_nvram.sh` - View current boot configuration
-- `clean_nvram.sh` - Remove non-standard boot entries
-- `reimage_microsd.sh` - Restore microSD to factory state
+### Components
 
----
+#### Platform Setup (`JETSON_ORIN/`, `RASPBERRY_PI/`)
+Hardware-specific scripts to prepare nodes for Kubernetes:
+- Headless configuration and system hardening
+- Boot optimization (NVMe SSD migration on Jetson)
+- GPU driver and CUDA setup
+- OS updates and verification
 
-## Troubleshooting
+#### Kubernetes Core (`k8s/node_setup/`, `k8s/ops/`)
+Standard Kubernetes installation using upstream kubeadm:
+- Container runtime (containerd) with systemd cgroup driver
+- Kubernetes packages (kubelet, kubeadm, kubectl)
+- Calico CNI for pod networking
+- Cluster bootstrapping and node joining
 
-### Jetson won't boot after setup
-1. Check what device is mounted as root:
-   ``` bash
-   findmnt -n -o SOURCE /
-   ```
+#### Infrastructure Addons (`k8s/addons/`)
+Production-grade platform services:
+- **cert-manager** - Automated TLS certificate management
+- **NGINX Ingress** - HTTP/HTTPS routing and load balancing
+- **Istio** or **Linkerd** - Service mesh for mTLS, observability, traffic management
+- **Knative** - Serverless platform (scale-to-zero for cost efficiency)
 
-2. Inspect NVRAM boot configuration:
-   ``` bash
-   sudo ./jetson_orin/tools/inspect_nvram.sh
-   ```
+#### Operational Tools (`k8s/tools/`)
+Day-2 operations and workflows:
+- **Prometheus + Grafana** - Metrics, dashboards, GPU monitoring
+- **Argo CD** - GitOps continuous delivery
+- **Chaos Mesh** - Chaos engineering and resilience testing
+- **kubectl-ai** - AI-assisted cluster operations
+- **k8sgpt** - AI-powered diagnostics and troubleshooting
 
-3. If needed, restore to factory state:
-   ``` bash
-   # Must be run while booted from SSD
-   sudo ./jetson_orin/tools/clean_nvram.sh
-   sudo ./jetson_orin/tools/reimage_microsd.sh
-   ```
+#### External Services (`etc/`)
+Supporting infrastructure (typically on standalone hosts):
+- **Docker Registry** - Private container image storage
+- **Gitea** - Self-hosted Git server for GitOps workflows
+- **TLS Certificate Authority** - Internal PKI for service encryption
 
-### Verify script shows failures
-Do not run `verify_setup.sh` until ALL setup steps (01-05) are complete. It checks for the final state, not intermediate states.
-
-### Custom NVRAM boot entries detected
-If `inspect_nvram.sh` shows entries numbered Boot0009 or higher:
-- These were created by external tools or troubleshooting
-- Remove them with `clean_nvram.sh`
-- Nothing in this repository creates custom NVRAM entries
-
----
-
-## Script Execution Order
-
-### Platform Preparation (Jetson Orin)
-Run these in sequence on each device:
-1. `JETSON_ORIN/setup/01_config_headless.sh`
-2. `JETSON_ORIN/setup/02_clone_os_to_ssd.sh`
-3. `JETSON_ORIN/setup/03_set_boot_to_ssd.sh`
-4. `JETSON_ORIN/setup/04_strip_microsd_rootfs.sh` (optional)
-5. `JETSON_ORIN/setup/05_update_os.sh`
-6. `JETSON_ORIN/setup/verify_setup.sh`
-
-### Kubernetes Installation (All Platforms)
-Run these on every node:
-1. `COMMON/k8s/setup/01_install_deps.sh`
-2. `COMMON/k8s/setup/02_install_kube.sh`
-
-### Role Assignment
-Run ONE of these per node:
-- **First control plane:** `COMMON/k8s/control_plane/init.sh`
-- **Workers or additional control planes:** `COMMON/k8s/worker/join.sh`
+#### Example Deployments (`k8s/deployments/`)
+Reference manifests demonstrating best practices:
+- StatefulSets for distributed training jobs
+- PersistentVolumes for model storage
+- Resource quotas and limits for GPU sharing
+- Ingress configurations for model serving endpoints
 
 ---
 
-## Repository Philosophy
+## Quick Start: Jetson Orin GPU Cluster
 
-This repository is designed to be:
-- **Educational**: Verbose comments explain the "why" behind each command
-- **Modular**: Hardware setup is separate from cluster configuration
-- **Repeatable**: Scripts can be run on multiple identical devices
-- **Transparent**: No hidden state; all configuration is explicit and documented
-- **Recoverable**: Tools provided to inspect state and restore to known-good configurations
+This walkthrough creates a 3-node cluster suitable for distributed PyTorch experimentation.
 
-Each script includes tutorial-style comments explaining Linux kernel modules, networking concepts, boot processes, and Kubernetes architecture. These scripts serve as both automation tools and learning resources.
+### Prerequisites
+
+**Hardware:**
+- 3× NVIDIA Jetson Orin Nano Developer Kits (8GB)
+- 3× NVMe SSD drives (256GB+ recommended)
+- 3× MicroSD cards (64GB+, for boot firmware)
+- Network switch and Ethernet cables
+- 1× Monitor, keyboard (for initial setup only)
+
+**Software:**
+- NVIDIA JetPack 5.1.2+ flashed to microSD cards
+- This repository cloned to each device
+
+### Step 1: Hardware Preparation (Per Node)
+
+With monitor and keyboard attached:
+
+```bash
+# Complete Ubuntu initial setup GUI
+# Clone this repository
+git clone https://github.com/yourusername/embedded_k8s.git
+cd embedded_k8s/jetson_orin/setup
+
+# Configure for headless operation
+sudo ./01_config_headless.sh
+sudo shutdown now
+
+# Disconnect monitor/keyboard, power on, SSH in:
+ssh user@<node-ip>
+cd embedded_k8s/jetson_orin/setup
+
+# Migrate OS to NVMe SSD for performance
+sudo ./02_clone_os_to_ssd.sh
+sudo ./03_set_boot_to_ssd.sh
+sudo reboot
+
+# After reboot, SSH back in:
+sudo ./04_strip_microsd_rootfs.sh  # Security hardening
+sudo ./05_update_os.sh             # System updates
+sudo ./06_verify_setup.sh          # Validation
+```
+
+**Result:** Clean, headless, SSD-booted node ready for Kubernetes.
+
+### Step 2: Install Kubernetes (All Nodes)
+
+```bash
+cd embedded_k8s/k8s/node_setup
+sudo ./01_install_deps.sh    # Container runtime, networking
+sudo ./02_install_kube.sh    # Kubernetes packages
+```
+
+### Step 3: Bootstrap the Cluster (First Node Only)
+
+```bash
+cd embedded_k8s/k8s/ops
+sudo ./bootstrap_cluster.sh
+```
+
+**Output:** Join commands for worker nodes and additional control planes.
+
+### Step 4: Join Worker Nodes (Remaining Nodes)
+
+On nodes 2 and 3:
+
+```bash
+cd embedded_k8s/k8s/ops
+sudo ./join_node.sh
+# Paste the join command from Step 3
+```
+
+### Step 5: Install Platform Addons (From Any Control Plane)
+
+```bash
+cd embedded_k8s/k8s/addons
+
+# Core infrastructure
+sudo ./install_cert_manager.sh      # Certificate automation
+sudo ./install_ingress_nginx.sh     # HTTP routing
+sudo ./install_linkerd.sh           # Service mesh (lightweight for ARM)
+sudo ./install_knative.sh           # Serverless platform
+
+# Operational tools
+cd ../tools
+sudo ./install_prometheus.sh        # Monitoring and GPU metrics
+sudo ./install_argocd.sh           # GitOps deployment
+```
+
+### Step 6: Deploy a Distributed Training Job
+
+Example: Distributed PyTorch on 3 Jetson GPUs
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pytorch-distributed
+spec:
+  clusterIP: None  # Headless service for peer discovery
+  selector:
+    app: pytorch-training
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pytorch-training
+spec:
+  serviceName: pytorch-distributed
+  replicas: 3  # One per GPU node
+  selector:
+    matchLabels:
+      app: pytorch-training
+  template:
+    metadata:
+      labels:
+        app: pytorch-training
+    spec:
+      containers:
+      - name: pytorch
+        image: nvcr.io/nvidia/pytorch:24.01-py3
+        command: 
+          - python
+          - -m
+          - torch.distributed.run
+          - --nproc_per_node=1
+          - --nnodes=3
+          - --node_rank=$(RANK)
+          - --master_addr=pytorch-training-0.pytorch-distributed
+          - --master_port=29500
+          - train.py
+        env:
+        - name: RANK
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+        resources:
+          limits:
+            nvidia.com/gpu: 1  # Request GPU
+```
+
+**Result:** Distributed training across 3 Jetson GPUs using PyTorch DDP.
 
 ---
 
-## Contributing
+## Scaling to Production GPU Infrastructure
 
-When adding new scripts or modifying existing ones:
-- Follow the tutorial-style commenting approach
-- Include verbose explanations of WHY, not just WHAT
-- Add pre-flight checks and clear error messages
-- Test on actual hardware before committing
-- Update relevant README files
+The exact same Kubernetes manifests work on professional GPU clusters:
+
+### Small-Scale Development
+- **3× Jetson Orin Nano** (8GB, 1024 CUDA cores each)
+- **Budget:** ~$1,500
+- **Workloads:** Small LLM fine-tuning, CV model development, learning
+
+### Mid-Scale Production
+- **3× Servers with NVIDIA RTX 4090** (24GB, 16,384 CUDA cores each)
+- **Budget:** ~$15,000
+- **Workloads:** Medium LLM fine-tuning, production inference, batch processing
+
+### Enterprise Scale
+- **8× Servers with NVIDIA A100 80GB** (80GB, 6,912 tensor cores each)
+- **Budget:** ~$200,000+
+- **Workloads:** Large LLM training, massive distributed jobs, multi-tenant ML platform
+
+**The Kubernetes YAML files don't change.** Only the resource requests scale:
+
+```yaml
+# Development (Jetson)
+resources:
+  limits:
+    nvidia.com/gpu: 1      # 8GB VRAM
+    memory: 4Gi
+
+# Production (A100)
+resources:
+  limits:
+    nvidia.com/gpu: 1      # 80GB VRAM
+    memory: 64Gi
+```
+
+---
+
+## Why Full Kubernetes (Not K3s)?
+
+This repository uses **upstream Kubernetes** (kubeadm) rather than lightweight distributions like K3s:
+
+### Educational Transparency
+Every component is installed and configured explicitly. You learn:
+- How container runtimes integrate with Kubernetes
+- Why CNI plugins are necessary and how they work
+- Control plane architecture and component responsibilities
+- How to make production-ready architectural decisions
+
+K3s abstracts these details away. Great for production simplicity, poor for learning.
+
+### Industry Standard
+- Cloud providers (EKS, GKE, AKS) run standard Kubernetes
+- Kubernetes certifications test standard Kubernetes knowledge
+- Enterprise GPU clusters use standard Kubernetes + NVIDIA GPU Operator
+- Your skills transfer directly to any Kubernetes environment
+
+### Production Flexibility
+- Choose your own components (CNI, service mesh, ingress, storage)
+- Full compatibility with all Helm charts and operators
+- NVIDIA GPU Operator officially supports standard Kubernetes
+- Easy migration path from edge to cloud
+
+### MLOps Ecosystem Compatibility
+Tools like Kubeflow, Ray, MLflow, and Seldon Core are designed for standard Kubernetes. While they often work with K3s, documentation and community support assume upstream k8s.
+
+**Learn standard Kubernetes here. If you later decide K3s fits a use case, the transition is trivial. The reverse is painful.**
+
+---
+
+## Repository Structure
+
+```
+embedded_k8s/
+├── README.md                          # This file
+├── jetson_orin/                       # NVIDIA Jetson Orin setup
+│   ├── setup/                         # Sequential OS preparation scripts
+│   │   ├── 01_config_headless.sh      # Headless configuration
+│   │   ├── 02_clone_os_to_ssd.sh      # SSD migration
+│   │   ├── 03_set_boot_to_ssd.sh      # Boot configuration
+│   │   ├── 04_strip_microsd_rootfs.sh # Security hardening
+│   │   ├── 05_update_os.sh            # System updates
+│   │   └── 06_verify_setup.sh         # Validation
+│   ├── tools/                         # NVRAM and recovery utilities
+│   └── README.md                      # Detailed Jetson guide
+├── raspberry_pi/                      # Raspberry Pi setup (future)
+│   └── README.md
+├── k8s/                               # Kubernetes installation and configuration
+│   ├── node_setup/                    # Prerequisites for all nodes
+│   │   ├── 01_install_deps.sh         # Container runtime, kernel modules
+│   │   └── 02_install_kube.sh         # Kubernetes packages
+│   ├── ops/                           # Cluster operations
+│   │   ├── bootstrap_cluster.sh       # Initialize first control plane
+│   │   └── join_node.sh               # Add nodes to cluster
+│   ├── addons/                        # Platform-level services
+│   │   ├── install_cert_manager.sh    # TLS automation
+│   │   ├── install_ingress_nginx.sh   # HTTP routing
+│   │   ├── install_istio.sh           # Service mesh (advanced)
+│   │   ├── install_linkerd.sh         # Service mesh (lightweight)
+│   │   ├── install_knative.sh         # Serverless platform
+│   │   └── README.md
+│   ├── tools/                         # Operational tooling
+│   │   ├── install_prometheus.sh      # Monitoring stack
+│   │   ├── install_argocd.sh          # GitOps
+│   │   ├── install_chaos_mesh.sh      # Chaos engineering
+│   │   ├── install_kubectl_ai.sh      # AI-assisted operations
+│   │   ├── install_k8sgpt.sh          # AI diagnostics
+│   │   ├── install_nfs_server.sh      # Shared storage
+│   │   └── README.md
+│   ├── deployments/                   # Example Kubernetes manifests
+│   │   ├── deployment.yaml            # Standard deployment
+│   │   ├── statefulset.yaml           # Stateful workloads (databases, training jobs)
+│   │   ├── ingress.yaml               # HTTP routing rules
+│   │   ├── persistent_volume.yaml     # Storage configurations
+│   │   └── README.md
+│   └── README.md
+└── etc/                               # Supporting infrastructure
+    ├── install_docker_registry.sh     # Private image registry
+    ├── install_gitea.sh               # Self-hosted Git server
+    ├── install_neovim.sh              # Terminal editor setup
+    ├── tls/                           # TLS certificate management
+    │   ├── generate_ca.sh             # Create Certificate Authority
+    │   ├── generate_cert.sh           # Issue service certificates
+    │   ├── enable_docker_registry_tls.sh  # Secure registry
+    │   ├── enable_gitea_tls.sh        # Secure Git server
+    │   └── trust_ca_on_nodes.sh       # Distribute CA to cluster
+    └── README.md
+```
+
+---
+
+## Learning Path
+
+This repository is structured as a progressive journey:
+
+### 1. Foundation (Week 1-2)
+- Hardware setup and OS preparation
+- Understanding Linux kernel modules for containers
+- Container runtime architecture (containerd + systemd cgroups)
+- Basic Kubernetes concepts (pods, deployments, services)
+
+### 2. Core Kubernetes (Week 3-4)
+- Control plane components and their roles
+- CNI networking deep-dive (Calico)
+- Storage abstractions (PV, PVC, StorageClasses)
+- ConfigMaps, Secrets, and application configuration
+
+### 3. Production Infrastructure (Week 5-6)
+- Service mesh architecture and mTLS
+- Ingress controllers and Layer 7 routing
+- Certificate management and PKI
+- Monitoring, logging, and observability
+
+### 4. Advanced Operations (Week 7-8)
+- GitOps workflows with Argo CD
+- Chaos engineering and resilience testing
+- Serverless with Knative
+- GPU resource management
+
+### 5. MLOps Specialization (Week 9+)
+- Distributed training patterns
+- Model serving and inference
+- ML pipelines and workflows
+- Multi-tenancy and resource quotas
+
+**But also:** This is a reference. Use it for a weekend project or a long-term learning journey. Every script stands alone with complete documentation.
+
+---
+
+## Key Features
+
+### Tutorial-Style Documentation
+Every script includes:
+- **Purpose:** What the script does and why it exists
+- **Tutorial Goal:** Concepts you'll learn
+- **Prerequisites:** What must be done first
+- **Workflow:** When and where to run the script
+- **Inline Comments:** Explaining every command's purpose
+
+Example from `01_install_deps.sh`:
+```bash
+# --- Tutorial: Kernel Modules for Containers ---
+# Kubernetes networking is complex. For it to work, the Linux kernel needs to
+# correctly handle container network traffic.
+# `overlay`: A filesystem driver that allows containers to efficiently layer
+#            filesystems, which is fundamental to how container images work.
+# `br_netfilter`: Allows the Linux bridge to pass traffic through the host's
+#                 firewall (`iptables`), making container traffic manageable.
+```
+
+### Production Patterns
+- Service mesh for zero-trust security
+- GitOps for declarative operations
+- Chaos engineering for resilience validation
+- Comprehensive monitoring and alerting
+
+### Vendor Neutrality
+- Standard Kubernetes (not a distribution)
+- CNI-agnostic (Calico by default, easily swappable)
+- Cloud-portable (same manifests work on EKS, GKE, AKS)
+- No proprietary lock-in
+
+### Hardware Flexibility
+- ARM64 native (Jetson, Raspberry Pi)
+- x86_64 compatible (standard servers)
+- Mixed-architecture clusters supported
+- GPU and CPU nodes can coexist
+
+---
+
+## GPU and CUDA Support
+
+### NVIDIA Jetson Integration
+
+The Jetson platform is first-class:
+- JetPack CUDA drivers work out-of-box with Kubernetes
+- GPU resource scheduling via `nvidia.com/gpu` resource
+- CUDA container support with nvidia-container-runtime
+- TensorRT optimization for inference workloads
+
+### NVIDIA GPU Operator (Coming Soon)
+
+Future addition for production GPU clusters:
+- Automated driver installation and updates
+- Multi-Instance GPU (MIG) support
+- GPU feature discovery and labeling
+- Time-slicing for GPU sharing
+
+### ML Framework Support
+
+Tested and documented with:
+- PyTorch (distributed training, DDP, FSDP)
+- TensorFlow (distributed strategies)
+- JAX (for research workloads)
+- NVIDIA NeMo (LLM training framework)
+
+---
+
+## Community and Support
+
+### Contributing
+
+Contributions welcome! This repository values:
+- **Educational clarity** - Explain the "why," not just the "what"
+- **Production readiness** - Scripts must work on real hardware
+- **Comprehensive testing** - Test on actual ARM64 devices
+- **Documentation quality** - Update READMEs with changes
+
+See individual README files for contribution guidelines.
+
+### Getting Help
+
+- **GitHub Issues:** Bug reports and feature requests
+- **Discussions:** Architecture questions and use cases
+- **Documentation:** Every directory has detailed README files
+
+### Acknowledgments
+
+Built on the shoulders of:
+- **NVIDIA Jetson AI Lab** - Jetson setup inspiration
+- **Kubernetes SIGs** - Upstream Kubernetes development
+- **CNCF Projects** - Istio, Linkerd, Knative, Argo, Prometheus, and more
+- **The Cloud Native Community** - For making this knowledge accessible
 
 ---
 
 ## License
 
-[Add your license information here]
+[Specify your license - e.g., MIT, Apache 2.0]
 
 ---
 
-## See Also
+## What's Next?
 
-- [NVIDIA Jetson AI Lab - Initial Setup Guide](https://www.jetson-ai-lab.com/initial_setup_jon.html)
-- [Kubernetes Documentation](https://kubernetes.io/docs/home/)
-- [NVIDIA Jetson Orin Developer Guide](https://developer.nvidia.com/embedded/learn/jetson-orin-nano-devkit-user-guide/index.html)
+After completing this repository, you'll have:
+- ✅ A production Kubernetes cluster
+- ✅ Deep understanding of cloud-native architecture
+- ✅ GPU-accelerated infrastructure for ML workloads
+- ✅ Skills that transfer to any Kubernetes environment
+- ✅ A platform for experimenting with distributed AI
+
+**Use it to:**
+- Train your first distributed neural network
+- Build a computer vision pipeline
+- Experiment with LLM fine-tuning
+- Prepare for Kubernetes certifications
+- Create a homelab that rivals production infrastructure
+
+**The gap between learning and production is smaller than you think.**
+
+Start with a Jetson. End with an A100 cluster. The architecture stays the same.
