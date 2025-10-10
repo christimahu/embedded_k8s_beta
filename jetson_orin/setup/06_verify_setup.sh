@@ -1,10 +1,9 @@
 #!/bin/bash
-
-# ====================================================================================
+# ============================================================================
 #
 #                    Jetson Node Setup Verifier (06_verify_setup.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
@@ -17,28 +16,28 @@
 #  --------------
 #  After performing major system changes, it's good practice to verify that
 #  everything is in the state you expect. This script acts as an automated
-#  checklist, ensuring our node meets all the foundational requirements before
+#  checklist, ensuring our node meets all foundational requirements before
 #  we attempt to install Kubernetes on it. It provides a clear pass/fail report
-#  on the most critical configuration points.
+#  on the most critical configuration points, like boot device and swap status.
 #
-#  When to Run This Script:
-#  -------------------------
+#  Prerequisites:
+#  --------------
+#  - Completed: All setup scripts from 01 through 05.
+#  - Hardware: System is fully configured and running from the SSD.
+#  - Network: SSH access to the Jetson.
+#  - Time: < 1 minute.
+#
+#  Workflow:
+#  ---------
 #  Run this script ONLY AFTER completing ALL setup steps (01 through 05).
 #  Running it mid-setup will show false failures because the system is in an
-#  intermediate state. This is by design - it checks for the FINAL state, not
-#  intermediate states.
+#  intermediate state. This is by design - it checks for the FINAL state.
 #
-#  What Gets Verified:
-#  -------------------
-#  1. Boot Device: Confirms the system is running from NVMe SSD, not microSD
-#  2. Boot Configuration: Verifies the microSD's extlinux.conf points to SSD
-#  3. Boot Path: Ensures system booted via standard NVIDIA path (Boot0001)
-#  4. MicroSD State: Ensures the microSD has been stripped of redundant OS files
-#  5. EFI Mount: Verifies /boot/efi is mounted from microSD partition 10
-#  6. Swap Status: Confirms swap is disabled (Kubernetes requirement)
-#  7. Boot Target: Verifies headless (command-line) mode is configured
-#
-# ====================================================================================
+# ============================================================================
+
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

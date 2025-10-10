@@ -1,14 +1,13 @@
 #!/bin/bash
-
-# ====================================================================================
+# ============================================================================
 #
 #              Step 3: Set Boot Device to SSD (03_set_boot_to_ssd.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
-#  This optional script modifies the bootloader configuration to make the NVMe SSD
+#  This script modifies the bootloader configuration to make the NVMe SSD
 #  the primary operating system drive.
 #
 #  Tutorial Goal:
@@ -16,19 +15,28 @@
 #  This script performs the critical "handoff" configuration. We will edit the
 #  `extlinux.conf` file (which physically resides on the microSD card), changing
 #  the `root=` parameter to point to the unique ID (UUID) of the SSD.
-#  On the next boot, the Jetson firmware (U-Boot) will load from the microSD, read
+#  On the next boot, the Jetson firmware will load from the microSD, read
 #  this new instruction, and then pivot to load the full operating system from the
 #  much faster SSD. This is a separate, deliberate step to give you full control
 #  over when the boot device is changed.
 #
+#  Prerequisites:
+#  --------------
+#  - Completed: `02_clone_os_to_ssd.sh`.
+#  - Hardware: NVMe SSD installed and OS cloned.
+#  - Network: SSH access to the Jetson.
+#  - Time: < 1 minute.
+#
 #  Workflow:
 #  ---------
 #  1. Run this script after cloning the OS with `02_clone_os_to_ssd.sh`.
-#  2. `sudo ./setup/03_set_boot_to_ssd.sh`
-#  3. A reboot is required for this change to take effect.
+#  2. A reboot is required for this change to take effect.
 #
-# ====================================================================================
+# ============================================================================
 
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

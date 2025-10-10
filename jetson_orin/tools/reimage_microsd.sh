@@ -1,52 +1,46 @@
 #!/bin/bash
 
-# ====================================================================================
+#!/bin-bash
+
+# ============================================================================
 #
-#                    Re-image MicroSD Card (reimage_microsd.sh)
+#                  Re-image MicroSD Card (reimage_microsd.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
 #  Re-images the microSD card with a fresh OS from the `sd-blob.img` file, restoring
 #  it to a factory-fresh state. This script performs a low-level block copy that
-#  recreates all partitions, filesystems, and boot files exactly as they were when
-#  the Jetson was originally flashed.
+#  recreates all partitions, filesystems, and boot files.
 #
 #  Tutorial Goal:
 #  --------------
 #  This script demonstrates safe disk imaging using the `dd` command. You'll learn
-#  how to perform a byte-for-byte copy of a disk image to physical media, why this
-#  operation is destructive, and the safety checks required before performing it.
+#  how to perform a byte-for-byte copy of a disk image to physical media and the
+#  critical safety checks required beforehand. Most importantly, it reinforces the
+#  Jetson boot architecture: this script MUST be run while booted from the NVMe SSD,
+#  as attempting to re-image the microSD while booted from it would destroy the
+#  currently running operating system. This provides a guaranteed path back to a
+#  known-good state without needing a separate computer.
 #
-#  Why Re-image the MicroSD?:
-#  ---------------------------
-#  During testing, troubleshooting, or after system corruption, the microSD card
-#  may end up in an inconsistent state. Perhaps boot files were modified, partitions
-#  were resized, or configuration files were edited incorrectly. Re-imaging provides
-#  a guaranteed path back to a known-good state without requiring physical removal
-#  of the card or access to a separate computer.
+#  Prerequisites:
+#  --------------
+#  - Completed: Full Jetson setup with boot from SSD.
+#  - Hardware: The system MUST be running from the NVMe SSD, not the microSD.
+#  - Files: The `sd-blob.img` file must be present in the same directory.
+#  - Time: ~10-15 minutes.
 #
-#  CRITICAL REQUIREMENT:
-#  ---------------------
-#  This script MUST be run while the system is booted from the NVMe SSD. If you
-#  attempt to re-image the microSD while booted from the microSD itself, the
-#  operation will destroy the currently running operating system, rendering the
-#  node unbootable. The script includes safety checks to prevent this scenario.
+#  Workflow:
+#  ---------
+#  Run this script from an SSD-booted system to completely reset the microSD
+#  card for a fresh deployment or to recover from a corrupted state.
 #
-#  About the sd-blob.img File:
-#  ----------------------------
-#  The `sd-blob.img` file is a complete snapshot of a factory-fresh microSD card.
-#  It contains the NVIDIA JetPack OS, bootloader, kernel, and all necessary files
-#  to boot the Jetson. You obtain this file by downloading it from NVIDIA's
-#  official JetPack downloads page and extracting it. This file must be stored
-#  in the same directory as this script for the operation to proceed.
-#
-#  See: https://www.jetson-ai-lab.com/initial_setup_jon.html
-#
-#  This script does NOT modify NVRAM. Boot entries remain unchanged.
-#
-# ====================================================================================
+# ============================================================================
+
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

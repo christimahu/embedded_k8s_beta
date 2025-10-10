@@ -1,0 +1,53 @@
+# ============================================================================
+#                KUBERNETES RESOURCE: Service (LoadBalancer)
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A Service of type `LoadBalancer` exposes a service externally using a cloud
+#  provider's load balancer. It provides a single, stable IP address that routes
+#  external traffic to the service's pods.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches the most straightforward way to expose a single service
+#  to the internet, especially in a cloud environment (AWS, GCP, Azure). You will
+#  learn that when you create this type of service, Kubernetes automatically
+#  requests a load balancer from the underlying cloud provider, which then gets
+#  configured to route traffic to your application's pods.
+#
+#  Key Differences from Ingress:
+#  -----------------------------
+#  - Simplicity: Exposes one service per IP. Much simpler than Ingress.
+#  - Layer 4: Operates at the transport layer (TCP/UDP), not the HTTP layer.
+#  - Cost: Each LoadBalancer service typically provisions a dedicated, billable
+#    cloud load balancer, which can be more expensive than a shared Ingress controller.
+#
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  # The name of the Service.
+  name: my-app-loadbalancer
+  namespace: default
+spec:
+  # --- Service Type ---
+  # `LoadBalancer`: Exposes the Service externally using a cloud provider's load balancer.
+  # `NodePort` and `ClusterIP` are other common types.
+  type: LoadBalancer
+
+  # --- Selector ---
+  # This selector identifies the set of Pods that will receive traffic.
+  # It must match the labels on the Pods you want to target (e.g., from a Deployment).
+  selector:
+    app: my-app
+
+  # --- Port Mapping ---
+  ports:
+    # A list of port definitions.
+    - protocol: TCP
+      # The port on the load balancer that will receive external traffic.
+      port: 80
+      # The port on the Pods that the traffic will be forwarded to.
+      targetPort: 8080

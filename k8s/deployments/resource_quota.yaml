@@ -1,0 +1,62 @@
+# ============================================================================
+#                       KUBERNETES RESOURCE: ResourceQuota
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A ResourceQuota provides constraints that limit aggregate resource consumption
+#  per namespace. It can limit the quantity of objects that can be created in a
+#  namespace by type, as well as the total amount of compute resources (CPU, memory)
+#  that may be consumed by resources in that namespace.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches you how to enforce resource limits at the namespace level,
+#  which is a critical tool for cluster administrators managing multi-tenant
+#  environments. You will learn how to prevent a single team or application from
+#  consuming all available cluster resources by setting hard limits on the number
+#  of objects (like Pods and Services) and the total amount of CPU and memory they
+#  can request or be limited to.
+#
+#  Key Concepts:
+#  -------------
+#  - `hard`: The set of hard limits being enforced.
+#  - Compute Resources: `requests.cpu`, `limits.memory`, etc. limit the sum of
+#    all container requests/limits in the namespace.
+#  - Object Counts: `pods`, `services`, `configmaps`, etc. limit the number of
+#    those objects that can exist in thenamespace.
+#
+# ============================================================================
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  # The name of the ResourceQuota object.
+  name: namespace-resource-quota
+  # The namespace where this quota will be enforced.
+  namespace: default
+spec:
+  # --- Hard Limits ---
+  # The set of resource limits that will be enforced.
+  hard:
+    # --- Compute Resource Limits ---
+    # The total sum of CPU requests across all Pods in this namespace cannot exceed 10 cores.
+    requests.cpu: "10"
+    # The total sum of memory requests cannot exceed 20Gi.
+    requests.memory: "20Gi"
+    # The total sum of CPU limits cannot exceed 20 cores.
+    limits.cpu: "20"
+    # The total sum of memory limits cannot exceed 40Gi.
+    limits.memory: "40Gi"
+
+    # --- Object Count Limits ---
+    # The maximum number of Pods that can exist in this namespace.
+    pods: "50"
+    # The maximum number of Services.
+    services: "20"
+    # The maximum number of PersistentVolumeClaims.
+    persistentvolumeclaims: "10"
+    # The maximum number of secrets.
+    secrets: "30"
+    # The maximum number of configmaps.
+    configmaps: "30"

@@ -1,0 +1,79 @@
+# ============================================================================
+#                         KUBERNETES RESOURCE: Deployment
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A Deployment provides declarative updates for Pods and ReplicaSets. You
+#  describe a desired state in a Deployment, and the Deployment Controller
+#  changes the actual state to the desired state at a controlled rate.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches the fundamental building block for running stateless
+#  applications. You will learn how to define a set of identical pods (replicas),
+#  specify a container image to run, and manage rolling updates to your
+#  application with zero downtime.
+#
+#  Key Concepts:
+#  -------------
+#  - `replicas`: The number of identical Pods you want to run.
+#  - `selector`: How the Deployment finds which Pods to manage. The labels here
+#    MUST match the labels in the Pod template.
+#  - `template`: The blueprint for the Pods that the Deployment will create. It
+#    contains metadata (labels) and the pod `spec` (containers, volumes, etc.).
+#
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # The name of the Deployment.
+  name: my-app-deployment
+  namespace: default
+spec:
+  # The desired number of Pods. Kubernetes will work to ensure this many are always running.
+  replicas: 3
+
+  # The selector tells the Deployment which Pods it is responsible for managing.
+  selector:
+    matchLabels:
+      # This label must match the label defined in the Pod template below.
+      app: my-app
+
+  # This is the template for the Pods that will be created.
+  template:
+    metadata:
+      # Labels are key-value pairs that are attached to objects.
+      # They are used to organize and to select subsets of objects.
+      labels:
+        app: my-app
+    spec:
+      containers:
+        # A list of containers belonging to the pod.
+        - name: my-app-container
+          # The Docker image to use for this container.
+          image: "nginx:1.25.3" # Using nginx as a simple example
+          ports:
+            # The port that the container exposes.
+            - containerPort: 80
+          # --- Environment Variables from ConfigMap and Secret ---
+          # This section shows how to inject configuration into the container.
+          env:
+            # A hardcoded environment variable.
+            - name: STATIC_ENV_VAR
+              value: "some-static-value"
+
+            # Inject a value from the 'app-config' ConfigMap created earlier.
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config # Name of the ConfigMap
+                  key: LOG_LEVEL    # Key within the ConfigMap
+
+            # Inject a value from the 'app-secrets' Secret created earlier.
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets # Name of the Secret
+                  key: API_KEY      # Key within the Secret

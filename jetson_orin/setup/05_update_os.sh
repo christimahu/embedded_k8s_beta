@@ -1,10 +1,9 @@
 #!/bin/bash
-
-# ====================================================================================
+# ============================================================================
 #
 #                  Step 5: Update Operating System (05_update_os.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
@@ -19,13 +18,23 @@
 #  installed packages to their latest versions. By running this after migrating to
 #  the SSD, the download and installation process is significantly faster.
 #
+#  Prerequisites:
+#  --------------
+#  - Completed: All prior setup steps (01-04).
+#  - Hardware: System is running from the NVMe SSD.
+#  - Network: SSH access and an active internet connection.
+#  - Time: ~5-10 minutes.
+#
 #  Workflow:
 #  ---------
-#  1. This script is run as the final step for both SSD and microSD-only setups.
-#  2. `sudo ./setup/05_update_os.sh`
+#  This script is run as the final step for the node setup. After this,
+#  the device is fully prepared for Kubernetes installation.
 #
-# ====================================================================================
+# ============================================================================
 
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

@@ -1,16 +1,15 @@
 #!/bin/bash
-
-# ====================================================================================
+# ============================================================================
 #
 #                 Step 2: Clone OS to SSD (02_clone_os_to_ssd.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
-#  This is an optional script for users who have installed an NVMe SSD. It clones
-#  the entire configured operating system from the microSD card to the SSD.
-#  This script performs a pure clone and does NOT modify the boot configuration.
+#  This script clones the entire configured operating system from the microSD
+#  card to the NVMe SSD. It performs a pure clone and does NOT modify the boot
+#  configuration.
 #
 #  Tutorial Goal:
 #  --------------
@@ -20,13 +19,23 @@
 #  new storage medium. This also serves as a "backup" of your configured headless
 #  state. Activating this new OS as the boot device is handled in the next step.
 #
+#  Prerequisites:
+#  --------------
+#  - Completed: `01_config_headless.sh` and subsequent shutdown.
+#  - Hardware: NVMe SSD installed in the Jetson.
+#  - Network: SSH access to the Jetson.
+#  - Time: ~15-20 minutes.
+#
 #  Workflow:
 #  ---------
 #  1. After powering on the headless device, SSH in.
-#  2. Run this script: `sudo ./setup/02_clone_os_to_ssd.sh`
+#  2. Run this script: `sudo ./02_clone_os_to_ssd.sh`.
 #
-# ====================================================================================
+# ============================================================================
 
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

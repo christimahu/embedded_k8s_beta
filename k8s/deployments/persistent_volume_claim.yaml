@@ -1,0 +1,59 @@
+# ============================================================================
+#                  KUBERNETES RESOURCE: PersistentVolumeClaim
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A PersistentVolumeClaim (PVC) is a request for storage by a user. It is
+#  similar to a Pod. Pods consume node resources; PVCs consume PV (PersistentVolume)
+#  resources. Pods can request specific levels of resources (CPU and Memory).
+#  Claims can request specific size and access modes (e.g., can be mounted once
+#  read-write or many times read-only).
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches the fundamental concept of dynamic storage provisioning.
+#  Instead of manually creating a PersistentVolume, you define a request for
+#  storage (the PVC). If your cluster has a default StorageClass, the provisioner
+#  will automatically create a matching PersistentVolume and bind it to your
+#  claim. This abstracts away the underlying storage system (NFS, AWS EBS, etc.).
+#
+#  Key Concepts:
+#  -------------
+#  - `accessModes`: Defines how the volume can be mounted.
+#    - `ReadWriteOnce` (RWO): Can be mounted as read-write by a single node.
+#    - `ReadOnlyMany` (ROX): Can be mounted read-only by many nodes.
+#    - `ReadWriteMany` (RWX): Can be mounted as read-write by many nodes.
+#  - `resources`: The request for the amount of storage.
+#  - `storageClassName`: The name of the StorageClass to use for provisioning.
+#    If omitted, the default StorageClass is used.
+#
+# ============================================================================
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # The name of the PVC, which will be referenced by Pods that want to use this storage.
+  name: my-app-pvc
+  namespace: default
+spec:
+  # --- Access Modes ---
+  # Defines the access rights to the volume. This must match what the underlying
+  # PersistentVolume can provide.
+  accessModes:
+    # This claim requests a volume that can be mounted as read-write by a single node.
+    # This is a common requirement for databases or other stateful applications.
+    - ReadWriteOnce
+
+  # --- Storage Request ---
+  # The amount of storage being requested.
+  resources:
+    requests:
+      storage: 5Gi # Requesting 5 Gibibytes of storage.
+
+  # --- Storage Class ---
+  # (Optional) The name of the StorageClass to use. If your cluster admin has
+  # configured a default StorageClass, you can omit this field. If you have
+  # multiple storage types (e.g., 'fast-ssd' and 'bulk-hdd'), you would specify
+  # the one you want here.
+  # storageClassName: "fast-ssd"

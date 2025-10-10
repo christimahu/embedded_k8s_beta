@@ -1,10 +1,9 @@
 #!/bin/bash
-
-# ====================================================================================
+# ============================================================================
 #
 #             Step 1: Configure Headless Mode (01_config_headless.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
@@ -23,16 +22,25 @@
 #       reduce the security attack surface.
 #    4. Disabling Swap: A mandatory prerequisite for a stable Kubernetes node.
 #
-#  This script is a mandatory first step for all setup paths (SSD or microSD-only).
+#  Prerequisites:
+#  --------------
+#  - Completed: Initial graphical Ubuntu setup on the Jetson.
+#  - Hardware: Jetson Orin with monitor, keyboard, and LAN cable connected.
+#  - Network: Active internet connection.
+#  - Time: ~10 minutes.
 #
 #  Workflow:
 #  ---------
-#  1. After the initial graphical Ubuntu setup, open a terminal and run this script.
-#  2. `sudo ./setup/01_config_headless.sh`
+#  1. After the initial graphical Ubuntu setup, open a terminal.
+#  2. Run `sudo ./01_config_headless.sh`.
 #  3. When it completes, run `sudo shutdown now`, then disconnect the monitor and
-#     keyboard.
+#     keyboard. All subsequent steps will be performed via SSH.
 #
-# ====================================================================================
+# ============================================================================
+
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

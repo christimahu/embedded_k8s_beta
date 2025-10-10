@@ -1,17 +1,18 @@
 #!/bin/bash
 
-# ====================================================================================
+#!/bin/bash
+
+# ============================================================================
 #
-#                    Inspect NVRAM Boot State (inspect_nvram.sh)
+#               Inspect NVRAM Boot State (inspect_nvram.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
 #  This is a read-only diagnostic script that displays the current UEFI boot
 #  configuration stored in the Jetson's NVRAM. It helps identify any custom boot
-#  entries that may have been created outside of the standard setup process, either
-#  by previous troubleshooting attempts or third-party tools.
+#  entries that may have been created outside of the standard setup process.
 #
 #  Tutorial Goal:
 #  --------------
@@ -19,18 +20,28 @@
 #  (Non-Volatile RAM) is a small chip on the Jetson's motherboard that stores
 #  firmware settings, including the boot entry list. Unlike the microSD card or
 #  SSD, NVRAM persists across power cycles and even survives re-imaging of storage
-#  devices. This script teaches you how to inspect this hidden configuration layer.
+#  devices. This script teaches you how to inspect this hidden configuration layer
+#  to understand the boot order and identify why custom NVRAM entries can cause
+#  unpredictable boot behavior.
 #
-#  What You'll Learn:
-#  ------------------
-#  - How to use `efibootmgr` to view UEFI boot entries
-#  - How to identify standard NVIDIA entries versus custom modifications
-#  - How the boot order affects which device the system attempts to boot from
-#  - Why custom NVRAM entries can cause unpredictable boot behavior
+#  Prerequisites:
+#  --------------
+#  - Completed: Basic Jetson setup. Can be run at any time.
+#  - Hardware: A booted Jetson Orin device.
+#  - Network: Not required.
+#  - Time: < 1 minute.
 #
-#  This script makes NO CHANGES to the system. It is purely informational.
+#  Workflow:
+#  ---------
+#  Run this non-destructive script anytime you need to audit the boot state,
+#  especially before using `clean_nvram.sh` to see what might be removed. This
+#  script makes NO CHANGES to the system.
 #
-# ====================================================================================
+# ============================================================================
+
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

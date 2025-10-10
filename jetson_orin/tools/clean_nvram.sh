@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# ====================================================================================
+#!/bin/bash
+
+# ============================================================================
 #
-#                    Clean Custom NVRAM Entries (clean_nvram.sh)
+#               Clean Custom NVRAM Entries (clean_nvram.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
@@ -15,34 +17,30 @@
 #  Tutorial Goal:
 #  --------------
 #  This script teaches safe NVRAM modification. While NVRAM changes cannot brick
-#  the Jetson (Force Recovery Mode always remains available), incorrect boot
-#  entries can cause confusing behavior where the system boots via an unexpected
-#  path. By understanding what this script removes and why, you'll gain insight
-#  into how the Jetson's multi-stage boot process works.
+#  the Jetson, incorrect boot entries can cause confusing behavior where the system
+#  boots via an unexpected path. By understanding what this script removes—any entry
+#  numbered Boot0009 or higher—you'll gain insight into how custom entries can
+#  bypass the standard `extlinux.conf` boot chain and why removing them is a key
+#  troubleshooting step for restoring predictable behavior.
 #
-#  What is a "Custom" Boot Entry?:
-#  --------------------------------
-#  NVIDIA's factory image creates boot entries Boot0000 through Boot0008. These
-#  are the standard entries. Any entry numbered Boot0009 or higher, or any entry
-#  with a non-standard name like "Jetson SSD Boot" or "Custom OS", was created
-#  by a user, troubleshooting tool, or third-party script. These custom entries
-#  often contain hardcoded boot parameters that can override the intended boot
-#  configuration defined in `extlinux.conf`.
+#  Prerequisites:
+#  --------------
+#  - Completed: `inspect_nvram.sh` (recommended to view entries first).
+#  - Hardware: A booted Jetson Orin device.
+#  - Network: Not required.
+#  - Time: < 1 minute.
 #
-#  Why Remove Custom Entries?:
-#  ----------------------------
-#  Custom boot entries bypass the standard boot chain. For example, a custom entry
-#  might hardcode `root=UUID=...` directly in NVRAM, making it impossible to
-#  change the root device by editing `extlinux.conf`. This violates the principle
-#  of configuration transparency and makes the system harder to maintain.
+#  Workflow:
+#  ---------
+#  Run this script to resolve issues caused by non-standard boot entries or
+#  to ensure a clean state before a redeployment. It preserves all standard
+#  NVIDIA boot entries (Boot0000-Boot0008).
 #
-#  Safety:
-#  -------
-#  This script preserves all standard NVIDIA entries (Boot0000-Boot0008) and only
-#  removes entries outside this range. It requires explicit confirmation before
-#  making any changes.
-#
-# ====================================================================================
+# ============================================================================
+
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

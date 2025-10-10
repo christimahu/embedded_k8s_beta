@@ -1,10 +1,9 @@
 #!/bin/bash
-
-# ====================================================================================
+# ============================================================================
 #
 #        Step 4: Strip MicroSD Root Filesystem (04_strip_microsd_rootfs.sh)
 #
-# ====================================================================================
+# ============================================================================
 #
 #  Purpose:
 #  --------
@@ -19,17 +18,26 @@
 #  that just starts the boot process. Leaving a complete, un-updated OS on the
 #  microSD is a security risk. An attacker with physical access could revert the
 #  boot config and load that old OS, bypassing any security patches we apply to
-#  the SSD. By "stripping" the root filesystem (`rootfs`), we eliminate this attack
+#  the SSD. By "stripping" the root filesystem, we eliminate this attack
 #  vector and ensure the SSD is the single source of truth for the running OS.
+#
+#  Prerequisites:
+#  --------------
+#  - Completed: `03_set_boot_to_ssd.sh` and rebooted the system.
+#  - Hardware: System must be booted and running from the NVMe SSD.
+#  - Network: SSH access to the Jetson.
+#  - Time: ~2 minutes.
 #
 #  Workflow:
 #  ---------
-#  1. Run this script ONLY after you have rebooted and confirmed you are running
-#     from the NVMe SSD.
-#  2. `sudo ./setup/04_strip_microsd_rootfs.sh`
+#  Run this script ONLY after you have rebooted and confirmed you are running
+#  from the NVMe SSD.
 #
-# ====================================================================================
+# ============================================================================
 
+readonly SCRIPT_VERSION="1.1.0"
+readonly LAST_UPDATED="2025-10-10"
+readonly TESTED_ON="JetPack 5.1.2, Ubuntu 20.04"
 
 # --- Helper Functions for Better Output ---
 readonly C_RESET='\033[0m'

@@ -1,0 +1,64 @@
+# ============================================================================
+#                         KUBERNETES RESOURCE: ConfigMap
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A ConfigMap is used to store non-confidential configuration data in
+#  key-value pairs. Pods can consume this data as environment variables,
+#  command-line arguments, or as configuration files in a volume.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches you how to decouple configuration from your application
+#  container images. By storing settings in a ConfigMap, you can change the
+#  application's configuration without rebuilding its image. This is a core
+#  principle of cloud-native application design.
+#
+#  Key Concepts:
+#  -------------
+#  - `data`: A map of key-value pairs. The values are plain text strings.
+#  - `binaryData`: For storing non-UTF8 data, base64-encoded.
+#  - Consumption: Can be mounted as files into a pod or exposed as
+#    environment variables.
+#
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # The name of the ConfigMap, used to reference it from other resources (like Pods).
+  name: app-config
+  # The namespace where this ConfigMap will be created.
+  namespace: default
+data:
+  # --- Key-Value Pairs ---
+  # These can be consumed as environment variables by a container.
+  # Example: A container can have an env var `API_URL` with the value `http://my-service.default.svc.cluster.local`.
+
+  # An example URL for a backend service.
+  API_URL: "http://my-service.default.svc.cluster.local"
+
+  # An example configuration setting, perhaps for logging.
+  LOG_LEVEL: "info"
+
+  # --- File-like Keys ---
+  # The key becomes the filename, and the value becomes the file's content.
+  # This is useful for mounting entire configuration files into a pod.
+
+  # This key `nginx.conf` can be mounted as a file named `nginx.conf` inside a pod.
+  nginx.conf: |
+    server {
+      listen       80;
+      server_name  localhost;
+
+      location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+      }
+    }
+
+  # Another example for application-specific settings.
+  app.properties: |
+    feature.flags.enableBeta=true
+    database.pool.size=20

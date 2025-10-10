@@ -1,0 +1,85 @@
+# ============================================================================
+#                         KUBERNETES RESOURCE: StatefulSet
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A StatefulSet is the workload API object used to manage stateful
+#  applications. Unlike a Deployment, it provides guarantees about the
+#  ordering and uniqueness of its Pods.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches you how to manage applications that require stable
+#  identities and storage. You will learn the key differences between a
+#  StatefulSet and a Deployment:
+#    1. Stable, Unique Network Identifiers: Pods are created with a persistent
+#       identifier (e.g., `my-app-0`, `my-app-1`) that is maintained across restarts.
+#    2. Stable, Persistent Storage: Each Pod can get its own unique PersistentVolume
+#       based on a template.
+#    3. Ordered Deployment and Scaling: Pods are created, updated, and deleted
+#       in a strict, predictable order.
+#
+#  Key Concepts:
+#  -------------
+#  - `serviceName`: A headless Service that controls the network domain for the Pods.
+#  - `volumeClaimTemplates`: A template for a PersistentVolumeClaim. A unique PVC
+#    will be created for each Pod, and the volume will be bound to that Pod
+#    across restarts.
+#
+# ============================================================================
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  # The name of the StatefulSet.
+  name: my-stateful-app
+  namespace: default
+spec:
+  # The selector must match the labels in the Pod template.
+  selector:
+    matchLabels:
+      app: my-stateful-app
+  # --- Headless Service Name ---
+  # This field is required. It points to a Headless Service that you must create
+  # separately. This service is responsible for providing the unique network
+  # identity for each pod (e.g., my-stateful-app-0.my-headless-service).
+  serviceName: "my-headless-service"
+
+  # The desired number of Pods. They will be created in order: my-stateful-app-0, then -1, etc.
+  replicas: 3
+
+  # The template for the Pods.
+  template:
+    metadata:
+      labels:
+        app: my-stateful-app
+    spec:
+      containers:
+        - name: my-app-container
+          image: "nginx:1.25.3"
+          ports:
+            - containerPort: 80
+              name: web
+          # --- Volume Mount ---
+          # This is where the persistent storage will be mounted inside the container.
+          volumeMounts:
+            - name: my-persistent-storage # Must match the name of the volumeClaimTemplate below.
+              # The path inside the container where the volume should be mounted.
+              mountPath: /usr/share/nginx/html
+
+  # --- Volume Claim Template ---
+  # This template defines the PersistentVolumeClaim that will be created for each Pod.
+  # When `my-stateful-app-0` is created, a PVC named `my-persistent-storage-my-stateful-app-0`
+  # will be created from this template and bound to it.
+  volumeClaimTemplates:
+    - metadata:
+        name: my-persistent-storage
+      spec:
+        # The access mode for the volume. ReadWriteOnce means the volume can be mounted
+        # as read-write by a single Node.
+        accessModes: ["ReadWriteOnce"]
+        # The desired size of the persistent volume for each Pod.
+        resources:
+          requests:
+            storage: 1Gi

@@ -1,0 +1,63 @@
+# ============================================================================
+#                        KUBERNETES RESOURCE: LimitRange
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  A LimitRange is a policy to constrain resource allocations (to Pods or
+#  Containers) in a namespace. It can set default resource requests and limits,
+#  and enforce min/max resource usage per container.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches you how to enforce best practices for resource management
+#  at the container level. While a ResourceQuota limits the namespace total, a
+#  LimitRange ensures that individual containers are well-behaved. You will learn how
+#  to:
+#    1. Automatically inject default CPU/memory requests and limits into containers
+#       that don't define them.
+#    2. Enforce minimum and maximum size constraints for containers.
+#
+#  Why is this important? If a Pod is created without resource requests/limits,
+#  the ResourceQuota for the namespace will not be enforced for that Pod.
+#  A LimitRange can ensure that all Pods get default values, making quotas effective.
+#
+# ============================================================================
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  # The name of the LimitRange object.
+  name: container-resource-limits
+  # The namespace where these limits will be applied.
+  namespace: default
+spec:
+  # A list of limits. You can apply different limits to different object types.
+  limits:
+    # This rule applies to objects of type "Container".
+    - type: Container
+      # --- Maximum Resource Limits ---
+      # No single container in this namespace can request more than 2 CPU cores or 4Gi of memory.
+      max:
+        cpu: "2"
+        memory: "4Gi"
+
+      # --- Minimum Resource Requests ---
+      # Every container must request at least 100 millicores of CPU and 100Mi of memory.
+      min:
+        cpu: "100m" # "m" stands for millicores. 1000m = 1 CPU core.
+        memory: "100Mi"
+
+      # --- Default Request Values ---
+      # If a container is created without specifying a CPU request, it will automatically
+      # be assigned a request of 200m.
+      defaultRequest:
+        cpu: "200m"
+        memory: "256Mi"
+
+      # --- Default Limit Values ---
+      # If a container is created without specifying limits, it will automatically
+      # be assigned these limits.
+      default:
+        cpu: "500m"
+        memory: "512Mi"

@@ -1,0 +1,89 @@
+# ============================================================================
+#                         KUBERNETES RESOURCE: Ingress
+# ============================================================================
+#
+#  Purpose:
+#  --------
+#  An Ingress exposes HTTP and HTTPS routes from outside the cluster to
+#  services within the cluster. Traffic routing is controlled by rules defined
+#  on the Ingress resource.
+#
+#  Tutorial Goal:
+#  --------------
+#  This example teaches you how to manage external access to your applications
+#  at Layer 7 (HTTP/HTTPS). You will learn how to define rules that route traffic
+#  based on the requested host and path. This is the standard and most flexible
+#  way to expose web services to the internet, allowing you to use a single IP
+#  address to route traffic to multiple services.
+#
+#  Prerequisites:
+#  --------------
+#  - An Ingress controller (like NGINX, Traefik, or HAProxy) must be installed
+#    and running in the cluster. This script does not install one.
+#
+#  Key Concepts:
+#  -------------
+#  - `ingressClassName`: Specifies which ingress controller should manage this Ingress.
+#  - `rules`: A list of routing rules. Each rule can specify a `host` and a set of
+#    `paths`.
+#  - `backend`: Defines the Service and port that traffic should be sent to.
+#  - `tls`: (Optional) Configures TLS termination by referencing a Secret that
+#    contains a TLS certificate and private key.
+#
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  namespace: default
+  # --- Annotations ---
+  # Annotations are used to configure controller-specific behavior.
+  # The examples below are for the popular NGINX Ingress Controller.
+  annotations:
+    # This annotation tells the NGINX controller to rewrite the URL path.
+    # For example, a request to my-app.com/service1 would be sent to the
+    # backend service at path /.
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  # The name of the IngressClass resource. This tells the specific Ingress
+  # controller that it is responsible for this Ingress.
+  ingressClassName: "nginx-example"
+
+  # --- TLS/SSL Configuration ---
+  # This section configures HTTPS. The Ingress controller will terminate the TLS
+  # connection using the certificate stored in the specified Secret.
+  tls:
+    - hosts:
+        # The domain name this TLS certificate is valid for.
+        - my-app.com
+      # The name of the Secret that contains the TLS private key and certificate.
+      # You must create this Secret separately.
+      secretName: my-app-tls-secret
+
+  # --- Routing Rules ---
+  rules:
+    # A rule for traffic directed to 'my-app.com'.
+    - host: "my-app.com"
+      http:
+        paths:
+          # A path-based rule.
+          - path: /service1
+            # `Prefix` matches any path that starts with `/service1`.
+            pathType: Prefix
+            backend:
+              service:
+                # The name of the Service to route traffic to.
+                name: my-service-1
+                port:
+                  # The port on the Service to send traffic to.
+                  number: 80
+
+          # Another path-based rule for a different service.
+          - path: /service2
+            pathType: Prefix
+            backend:
+              service:
+                name: my-service-2
+                port:
+                  number: 8080
